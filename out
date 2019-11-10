@@ -1,0 +1,173 @@
+0
+0
+fun-declaration
+a
+b
+c
+[param-list
+ [param
+  [type-specifier
+    [Int]
+   [bracket-list
+   ]
+  ]
+  [ID-space-list
+    [a]
+    [b]
+    [c]
+  ]
+ ]
+]
+====int====
+====int====
+====int====
+====int====
+====int====
+====int====
+====int====
+ASDFASasdfasdfasdf
+1
+1
+1
+1
+1
+[program
+ [declaration-list
+  [declaration
+   [fun-declaration
+    [ID-space-list
+      [comparator]
+    ]
+     [=]
+    [anonymous-function
+     [params
+      [param-list
+       [param
+        [type-specifier
+          [Int]
+         [bracket-list
+         ]
+        ]
+        [ID-space-list
+          [a]
+          [b]
+          [c]
+        ]
+       ]
+      ]
+     ]
+      [=>]
+     [final-stmt
+      [other-selection-stmt
+       [clause-list
+        [clause
+          [[]
+          [(]
+         [simple-expression
+          [additive-expression
+           [term
+            [factor
+             [var
+               [a]
+             ]
+            ]
+           ]
+          ]
+          [relop
+            [>]
+          ]
+          [additive-expression
+           [term
+            [factor
+             [var
+               [b]
+             ]
+            ]
+           ]
+          ]
+         ]
+          [)]
+          [=>]
+         [final-stmt
+          [other-selection-stmt
+           [clause-list
+            [clause
+              [[]
+              [(]
+             [simple-expression
+              [additive-expression
+               [term
+                [factor
+                 [var
+                   [a]
+                 ]
+                ]
+               ]
+              ]
+              [relop
+                [>]
+              ]
+              [additive-expression
+               [term
+                [factor
+                 [var
+                   [c]
+                 ]
+                ]
+               ]
+              ]
+             ]
+              [)]
+              [=>]
+             [final-stmt
+              [simple-expression
+               [additive-expression
+                [term
+                 [factor
+                   [5]
+                 ]
+                ]
+               ]
+              ]
+             ]
+            ]
+           ]
+            [[]
+            [non]
+            [=>]
+           [final-stmt
+            [simple-expression
+             [additive-expression
+              [term
+               [factor
+                 [4]
+               ]
+              ]
+             ]
+            ]
+           ]
+          ]
+         ]
+        ]
+       ]
+        [[]
+        [non]
+        [=>]
+       [final-stmt
+        [simple-expression
+         [additive-expression
+          [term
+           [factor
+             [0]
+           ]
+          ]
+         ]
+        ]
+       ]
+      ]
+     ]
+    ]
+   ]
+  ]
+ ]
+]

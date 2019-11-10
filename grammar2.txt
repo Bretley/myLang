@@ -1,0 +1,8 @@
+E -> A
+A -> A1 A2 A3 A4 A5 A6
+A1 -> empty | a
+A2 -> empty | b
+A3 -> empty | c
+A4 -> empty | d
+A5 -> empty | e
+A6 -> empty | f

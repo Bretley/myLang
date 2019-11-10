@@ -1,0 +1,3 @@
+1 For each production X -> αAB, put FIRST(b) − {empty} in FOLLOW(A) 
+2 If empty is in first(b) then put follow x into follow A
+3 For each production X -> αA, put FOLLOW(X) into FOLLOW(A)
