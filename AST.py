@@ -1,6 +1,11 @@
 import copy
 import sys
 
+
+""" returns only AST children of ast or of list """
+def asts(ast):
+    return [x for x in ast if isinstance(x, AST)]
+
 def flattenLists(ast, parentIsList, parentName):
     if not isinstance(ast, AST):
         return [ast]
@@ -22,6 +27,17 @@ class AST:
         self.type = None
         self.caseNum = None
         self.selectionResolution = None
+        self.cstr = None
+        self.cCode = None
+
+    def recursiveUpdate(self, propName, newValue):
+        setattr(propName, newValue)
+        for child in self:
+            if isinstance(child, AST):
+                child.recursiveUpdate(propName, newValue)
+
+    def genC(self):
+        pass
 
     """ boolean of whether or not this node is a list.
     This is mostly a helper for flattening lists"""

@@ -163,7 +163,7 @@
   "function-body": [
    [
     "{", 
-    "local-declarations", 
+    "local-declarations-list", 
     "statement-list", 
     "final-stmt", 
     "}"
@@ -223,7 +223,7 @@
   "compound-stmt": [
    [
     "{", 
-    "local-declarations", 
+    "local-declarations-list", 
     "statement-list", 
     "final-stmt", 
     "}"
@@ -231,9 +231,9 @@
   ]
  }, 
  {
-  "local-declarations": [
+  "local-declarations-list": [
    [
-    "local-declarations", 
+    "local-declarations-list", 
     "var-declaration"
    ], 
    [
@@ -278,7 +278,7 @@
  {
   "expression-stmt": [
    [
-    "expression", 
+    "expressionList", 
     ";"
    ], 
    [
@@ -346,18 +346,52 @@
    [
     "if", 
     "(", 
-    "expression", 
+    "boolExprList", 
     ")", 
-    "statement"
+    "{", 
+    "statement-list", 
+    "}"
    ], 
    [
     "if", 
     "(", 
-    "expression", 
+    "boolExprList", 
     ")", 
-    "statement", 
+    "{", 
+    "statement-list", 
+    "}", 
     "else", 
-    "statement"
+    "{", 
+    "statement-list", 
+    "}"
+   ]
+  ]
+ }, 
+ {
+  "elseifList": [
+   [
+    "elseifList", 
+    "elseif"
+   ], 
+   [
+    "elseif"
+   ], 
+   [
+    "empty"
+   ]
+  ]
+ }, 
+ {
+  "elseif": [
+   [
+    "else", 
+    "if", 
+    "(", 
+    "boolExprList", 
+    ")", 
+    "{", 
+    "statement-list", 
+    "}"
    ]
   ]
  }, 
@@ -366,9 +400,11 @@
    [
     "while", 
     "(", 
-    "expression", 
+    "expressionList", 
     ")", 
-    "statement"
+    "{", 
+    "statement-list", 
+    "}"
    ]
   ]
  }, 
@@ -380,17 +416,17 @@
    ], 
    [
     "return", 
-    "expression", 
+    "expressionList", 
     ";"
    ]
   ]
  }, 
  {
-  "expression": [
+  "expressionList": [
    [
     "var", 
     "=", 
-    "expression"
+    "expressionList"
    ], 
    [
     "simple-expression"
@@ -405,7 +441,7 @@
    [
     "ID", 
     "[", 
-    "expression", 
+    "expressionList", 
     "]"
    ]
   ]
@@ -532,7 +568,7 @@
   "factor": [
    [
     "(", 
-    "expression", 
+    "expressionList", 
     ")"
    ], 
    [
@@ -575,7 +611,7 @@
    [
     "arg-list", 
     ",", 
-    "expression"
+    "expressionList"
    ], 
    [
     "arg-list", 

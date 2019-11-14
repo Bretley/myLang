@@ -1,6 +1,7 @@
 from slr import SLRParser
 from AST import AST
 from AST import flattenLists
+from AST import asts
 from semantic import *
 import sys
 
@@ -60,8 +61,6 @@ def genC(ast, st, tabDepth):
     if ast.name == 'var-declaration':
         for name in ast[1]:
             st.addSymbol(Var(name, ast[0].baseType + ast[0].brackets))
-            ret += ast[0].baseType + ' ' + name + ast[0].brackets
-            ret += ';\n'
     elif ast.name == 'assignment':
         for name, value, typ in zip(ast[0],ast[2], ast.type):
             if not st.checkScope(name):
@@ -73,6 +72,24 @@ def genC(ast, st, tabDepth):
         ret += '\n' + ast.returnType.lower().replace('[]','*') + ' ' + ast[0][0] + str(Function(ast[2]).params) + ' {\n'
         tabDepth += 1
 
+    if ast.name == 'final-stmt' and ast[0].name == 'other-selection-stmt':
+        ast[0].selectionResolution = 'return'
+
+    if ast.name == 'assignment' and ast[2].name == 'other-selection-stmt':
+        ast[2].selectionResolution = ast[0]
+
+    if ast.selectionResolution != None:
+        for child in ast.children:
+            if isinstance(child, AST):
+                child.selectionResolution = ast.selectionResolution
+
+    if ast.name == 'expressionList':
+        if ast[-1].name == 'other-selection-stmt':
+            ast[-1].selectionResolution = ''
+
+    if ast.name == 'iteration-stmt':
+        tabDepth += 1
+
 
     """ top down above """
     for child in ast:
@@ -82,7 +99,17 @@ def genC(ast, st, tabDepth):
     if ast.name == 'anonymous-function':
         ast.cstr = ast[2].cstr
         ret += ast.cstr
-    if ast.name == 'final-stmt':
+    elif ast.name == 'function-body':
+        ast.cstr = ast[1].cstr + ast[2].cstr + ast[3].cstr
+    elif ast.name == 'local-declarations-list':
+        ast.cstr = ((tab*tabDepth)+"\n").join([x.cstr for x in ast])
+    elif ast.name == 'iteration-stmt':
+        if ast.case(0):
+            ast.cstr = (tab*(tabDepth-1))
+            ast.cstr += 'while ' + ast[2].cstr + ' {\n' 
+            ast.cstr += ast[5].cstr
+            ast.cstr += '\n' + (tab*(tabDepth-1)) + '}\n'
+    elif ast.name == 'final-stmt':
         #TODO figure out the casese
         # If this is the last one in a function and only contains a simple
         # expression, we ought to return it
@@ -91,12 +118,12 @@ def genC(ast, st, tabDepth):
         elif ast.selectionResolution in ['return', None]:
             ast.cstr = 'return ' +  ast[0].cstr + ';\n'
         else: 
-            ast.cstr = ast.selectionResolution + ' = ' + ast[0].cstr
+            ast.cstr = 'selectionResolution ' + ast[0].cstr
         #ret += tab*tabDepth + 'return ' + ast[0].cstr + ';\n'
 
-    if ast.name in ['addop','relop','mulop']:
+    elif ast.name in ['addop','relop','mulop']:
         ast.cstr = ast[0]
-    if ast.name in ['factor']:
+    elif ast.name in ['factor']:
         #print( ast)
         if isinstance(ast[0], AST):
             ast.cstr = ast[0].cstr
@@ -112,7 +139,31 @@ def genC(ast, st, tabDepth):
     elif ast.name == 'args':
         ast.cstr = ast[0].cstr
     elif ast.name == 'arg-list':
-        ast.cstr = ','.join([x.cstr for x in ast if isinstance(x,AST)])
+        ast.cstr = ','.join([x.cstr for x in asts(ast)])
+    elif ast.name == 'statement-list':
+        ast.cstr = '\n'.join([x.cstr for x in ast])
+    elif ast.name == 'statement':
+        ast.cstr = ast[0].cstr
+    elif ast.name == 'expression-stmt':
+        print( ast[0])
+        ast.cstr = (tab*tabDepth) +ast[0].cstr + ';'
+    elif ast.name == 'expressionList':
+        if ast[-1].name == 'other-selection-stmt':
+            resolved = ' = '.join([x.cstr + '' for x in asts(ast[:-1])])
+            print( resolved)
+            ast.cstr = ast[-1].cstr.replace('selectionResolution', resolved)
+        elif len(ast) > 1:
+            print( ast.children)
+            ast.cstr = ' = '.join([x.cstr for x in asts(ast)])
+        else:
+            ast.cstr = ast[0].cstr
+            # 
+    elif ast.name == 'var-declaration':
+        ast.cstr = '' 
+        for name in ast[1]:
+            ast.cstr += tab*tabDepth
+            ast.cstr += st.findSymbol(name).type + ' ' + name
+            ast.cstr += ';\n'
     elif ast.name == 'var':
         if ast.case(0):
             ast.cstr = ast[0]
@@ -120,7 +171,7 @@ def genC(ast, st, tabDepth):
             ast.cstr = ast[0] + ast[1] + ast[2].cstr + ast[3]
             print( ast)
 
-    if ast.name in ['term','additive-expression']:#'simple-expression']:
+    elif ast.name in ['term','additive-expression']:#'simple-expression']:
         if len(ast) == 1:
             ast.cstr = ast[0].cstr
         elif len(ast) == 3:
@@ -129,7 +180,6 @@ def genC(ast, st, tabDepth):
             ast.cstr =  '(' +ast[1].cstr + ast[2].cstr +ast[3].cstr + ')'
     elif ast.name == 'simple-expression':
         if len(ast) == 1:
-            print( ast)
             ast.cstr =   '' + ast[0].cstr + ''
         elif len(ast) == 3:
             ast.cstr =    '(' +ast[0].cstr + str(ast[1][0]) +ast[2].cstr + ')'
@@ -154,13 +204,13 @@ def genC(ast, st, tabDepth):
                 ast.cstr += ' else if ' + child.cstr
     elif ast.name == 'boolTermList':
         if ast.case(0):
-            ast.cstr = '(' + ' && '.join([x.cstr for x in ast if isinstance(x, AST)]) + ')'
+            ast.cstr = '(' + ' && '.join([x.cstr for x in asts(ast)]) + ')'
         else:
             ast.cstr = ast[0].cstr
 
     elif ast.name == 'boolExprList':
         if ast.case(0):
-            ast.cstr = '(' + ' || '.join([x.cstr for x in ast if isinstance(x, AST)]) + ')'
+            ast.cstr = '(' + ' || '.join([x.cstr for x in asts(ast)]) + ')'
         else:
             ast.cstr = ast[0].cstr
     elif ast.name == 'boolFactor':
@@ -177,8 +227,8 @@ def genC(ast, st, tabDepth):
             ast.cstr += '\n' + tab*(tabDepth) +'}'
         else:
             if ast.selectionResolution != 'return':
-                ast.cstr += tab*(tabDepth+1) + ast.selectionResolution
-                ast.cstr += '=' + ast + ';\n'
+                ast.cstr += tab*(tabDepth+1)
+                ast.cstr += ast[3].cstr + ';\n'
             else:
                 if ast[3].name != 'other-selection-stmt':
                     ast.cstr += tab*(tabDepth+1)
@@ -187,14 +237,19 @@ def genC(ast, st, tabDepth):
 
     elif ast.name == 'clause':
         ast.cstr = ast[2].cstr + ' {\n'
-        if ast.selectionResolution != 'return':
-            ast.cstr += tab*(tabDepth+1) + ast.selectionResolution
-            ast.cstr += '=' + ast + ';\n'
+        if ast[5][0].name == 'other-selection-stmt':
+            ast.cstr += tab*tabDepth + ast[5].cstr.replace('\n','\n'+(tab))
+            ast.cstr += '\n' + tab*(tabDepth) +'}'
         else:
-            if ast[5].name != 'other-selection-stmt':
+            if ast.selectionResolution != 'return':
                 ast.cstr += tab*(tabDepth+1)
                 ast.cstr += ast[5].cstr
-        ast.cstr += tab*(tabDepth) + '}' 
+                ast.cstr += ';\n'
+            else:
+                if ast[5].name != 'other-selection-stmt':
+                    ast.cstr += tab*(tabDepth+1)
+                    ast.cstr += ast[5].cstr
+            ast.cstr += tab*(tabDepth) + '}' 
 
 
     elif ast.name == 'fun-declaration':

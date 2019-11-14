@@ -80,18 +80,6 @@ def errorCheck(ast, st):
             return False
         st.enterScope()
 
-    if ast.name == 'final-stmt' and ast[0].name == 'other-selection-stmt':
-        ast[0].selectionResolution = 'return'
-
-    if ast.name == 'assignment' and ast[2].name == 'other-selection-stmt':
-        ast[2].selectionResolution = ast[0]
-
-    if ast.selectionResolution != None:
-        for child in ast.children:
-            if isinstance(child, AST):
-                child.selectionResolution = ast.selectionResolution
-
-
 
     """ Top down above here """
     for child in ast:
@@ -113,6 +101,7 @@ def errorCheck(ast, st):
 
     elif ast.name == 'fun-declaration':
         ast.returnType = ast[2].type
+        print( ast[2].name)
 
     elif ast.name == 'anonymous-function':
         ast.type = ast[2].type
@@ -120,11 +109,13 @@ def errorCheck(ast, st):
     elif ast.name == 'compound-stmt':
         ast.type = ast[3].type
 
+    elif ast.name == 'function-body':
+        ast.type = ast[3].type
+
     elif ast.name == 'final-stmt':
         ast.type = ast[0].type
 
     elif ast.name == 'boolExpression':
-        print( ast)
         if ast.case(0):
             if isBool(ast[0], ast[2]):
                 ast.type == 'boolean'

@@ -3,10 +3,11 @@ ack = Int m n =>
     [ non => 1
 
 comparator = Int a b =>
-    [(a > b)=> 1
-    [(a < b)=> -1
+    [(a > b) => 1
+    [(a < b) => -1
     [ non => 0
 
 fact = Int a =>
-    [(f < 1 ^ f == 5 v f == 6) => a * fact(a-1)
+    [(a > 1) => a * fact(a-1)
     [ non => 1
+
