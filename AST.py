@@ -18,10 +18,10 @@ def flattenLists(ast, parentIsList, parentName):
         ret = []
         for child in ast.children:
             ret += flattenLists(child, ast.isList() , ast.name)
-        return [AST(ast.name, ret)]
+        return [AST(ast.name, ret, ast.lineNum)]
 
 class AST:
-    def __init__(self, name, children):
+    def __init__(self, name, children, lineNum):
         self.name = name
         self.children = children
         self.type = None
@@ -29,15 +29,8 @@ class AST:
         self.selectionResolution = None
         self.cstr = None
         self.cCode = None
-
-    def recursiveUpdate(self, propName, newValue):
-        setattr(propName, newValue)
-        for child in self:
-            if isinstance(child, AST):
-                child.recursiveUpdate(propName, newValue)
-
-    def genC(self):
-        pass
+        self.hoists = []
+        self.lineNum = lineNum
 
     """ boolean of whether or not this node is a list.
     This is mostly a helper for flattening lists"""
@@ -68,7 +61,7 @@ class AST:
 
     def str(self, depth):
         pad = ' '*depth
-        ret = pad + "[" + self.name
+        ret = pad + "[" + self.name + ": " + str(self.type)
         for child in self.children:
             ret += "\n"
             if isinstance(child, AST):
@@ -82,28 +75,27 @@ class AST:
         productions = grammar.getProd(self.name)
         viableProds = copy.deepcopy(productions)
         # Prune by length first
-        viableProds = [x for x in viableProds if len(x) == len(self.children)]
-        if len(viableProds) == 1:
-            self.caseNum = productions.index(viableProds[0])
-        elif 'list' in self.name or 'List' in self.name:
+        viableProds = [x for x in viableProds if len(x) == len(self)]
+        if self.isList():
             self.caseNum = 0
         else:
+
             # loop over all remaining productions of equal length
-            for prodIndex, prod in enumerate(viableProds):
+            for prod in viableProds:
                 found = True
                 for itemIndex, (item, child) in enumerate(zip(prod,self.children)):
-                        if grammar.isTerminal(item):
-                            found = found and not isinstance(child, AST)
-                            if item == 'NUM':
-                                found = found and (child.isdigit())
-                            elif item == 'ID':
-                                found = found and not child[0].isdigit()
-                            else:
-                                found = found and (item == child)
+                    if grammar.isTerminal(item):
+                        found = found and not isinstance(child, AST)
+                        if item == 'NUM':
+                            found = found and (child.isdigit())
+                        elif item == 'ID':
+                            found = found and not child[0].isdigit()
                         else:
-                            found = found and isinstance(child, AST) and (item == child.name)
+                            found = found and (item == child)
+                    else:
+                        found = found and isinstance(child, AST) and (item == child.name)
                 if found:
-                    self.caseNum = prodIndex
+                    self.caseNum = productions.index(prod)
                     break
 
         for child in self:

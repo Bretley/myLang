@@ -13,9 +13,13 @@ class SLRParser:
         self.dfa = DFA(self.grammar)
         self.stack = [("DummySymbol", self.dfa.startState)]
         self.lexer = Lexer(cFile, cFile + ".lex")
+        """
+        This bit's going to go away soon
         self.lexed = self.lexer.lexed
         self.lexed = [x for x in self.lexed.split("\n") if x != '']
         self.lexed = [eval(x) for x in self.lexed]
+        """
+        self.lexed = self.lexer.lexedList
         self.action = []
         self.terminals = self.grammar.terminals
         self.actions = {}
@@ -71,22 +75,33 @@ class SLRParser:
                 children = list(reversed(children))
                 self.stack.append((action[1], self.dfa.goto(self.stack[-1][1], action[1]), self.lexed[lexIndex]))
 
-                self.nodeStack.append(AST(action[1], children))
+                self.nodeStack.append(AST(action[1], children, self.lexed[lexIndex][0]))
             elif action == ("error"):
                 # Debugging like a pro
                 print( self.lexed[lexIndex])
-                print( "BIG OOF")
+                print( )
+                print( "Syntax Error:")
+                errorLine = self.lexed[lexIndex][0]-1
+                print( "Found on line: " + str(errorLine))
+                for offset in range(-3, 3):
+                    if (errorLine+offset) >= 0 and (errorLine+offset) < len(self.lexer.infileLines):
+                        pref = '  ' if (offset != 0) else '>>'
+                        print( pref + self.lexer.infileLines[errorLine + offset])
                 print( "==========")
                 print( lexIndex)
-                print( "lexItem = " + str(lexItem) + "->  " + str(self.lexed[lexIndex]))
+                print( "lexItem = " + str(lexItem) + " ->  " + str(self.lexed[lexIndex]))
                 print( "action = " + str(action))
                 print( "STACK")
                 print(("...."))
                 for x in self.stack[-4:-1]:
                     print( x[0])
                 print( self.stack[-1][1])
-                print( self.dfa.transitionTable[self.stack[-1][1]])
-                print( self.dfa.goto(self.stack[-1][1], lexItem))
+                a = self.dfa.transitionTable[self.stack[-1][1]]
+                b = {}
+                for key in a:
+                    if a[key] != () and self.grammar.isTerminal(key):
+                        b[key] = a[key]
+                print( b)
                 return None
             elif action == ("accept"):
                 break

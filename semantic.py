@@ -1,14 +1,25 @@
 import sys
 from slr import *
+from AST import asts
+
+
+def err(errString): 
+    print( "ERROR: " + errString)
 
 def isBool(*args):
-    print( args)
-    return all([x.type == 'boolean' for x in args])
+    if isinstance(args[0], list):
+        return all([x.type == 'boolean' for x in args[0]])
+    else:
+        return all([x.type == 'boolean' for x in args])
+
+def allType(checkList, ast):
+    return all(asts(ast))
 
 class Var:
-    def __init__(self, name, varType):
+    def __init__(self, name, baseType, dimensions):
         self.name = name
-        self.type = varType
+        self.type = baseType
+        self.dimensions = dimensions
 class Fun:
     def __init__(self, name, varType, paramNum):
         self.name = name
@@ -30,8 +41,6 @@ def typeOf(ast):
         if len(ast.children) == 1:
             ast.type = typeof(ast[0])
     return ast.type
-
-     
 
 class SymbolTable:
     def __init__(self):
@@ -66,7 +75,7 @@ def listLen(ast, name):
             break
     return ret
 
-def errorCheck(ast, st):
+def errorCheck(ast, st, fileLines):
     valid = True
     if not isinstance(ast, AST):
         return True
@@ -76,32 +85,35 @@ def errorCheck(ast, st):
 
     elif ast.name == 'fun-declaration':
         if len(ast[0].children) != 1 :
-            print( "Error: only one name per function definition allowed")
+            err( "only one name per function definition allowed")
             return False
         st.enterScope()
 
 
     """ Top down above here """
     for child in ast:
-        valid = valid and errorCheck(child, st)
+        valid = valid and errorCheck(child, st, fileLines)
         if not valid:
             return False
     """ Bottom up below here """
 
     """ Function declaration / body """
-
+    
+    for x in asts(ast):
+        ast.hoists += x.hoists
     if ast.name == 'param-list':
-        #print( ast)
         pass
 
     elif ast.name == 'param':
-        for name in ast[1]:
+        for childname in ast[1]:
             #print( name + ast[0].brackets)
-            st.addSymbol(Var(name, ast[0].baseType + ast[0].brackets))
+            st.addSymbol(Var(childname, ast[0].baseType,
+                ast[0].dimensions))
 
     elif ast.name == 'fun-declaration':
+        # print( ast.hoists[0].name )
+        # print( ast.hoists[0].type )
         ast.returnType = ast[2].type
-        print( ast[2].name)
 
     elif ast.name == 'anonymous-function':
         ast.type = ast[2].type
@@ -110,34 +122,68 @@ def errorCheck(ast, st):
         ast.type = ast[3].type
 
     elif ast.name == 'function-body':
-        ast.type = ast[3].type
+        ast.type = ast[2].type
 
     elif ast.name == 'final-stmt':
         ast.type = ast[0].type
-
-    elif ast.name == 'boolExpression':
-        if ast.case(0):
-            if isBool(ast[0], ast[2]):
-                ast.type == 'boolean'
-            else:
-                print('ERROR: non boolean clauses')
+    
+    elif ast.name == 'expressionList':
+        
+        if len(ast) == 1:
+            ast.type = ast[0].type
         else:
-            if isBool(ast[0]):
-                ast.type == 'boolean'
-            else:
-                print('ERROR: non boolean clauses')
+            #TODO: give this a look over
+            checkType = ast[-1].type
+            for varName in asts(ast)[:-1]:
+                var = st.findSymbol(varName[0])
+                if var is None: #Doesn't exist yet
+                    st.addSymbol(Var(varName[0], checkType, 0)) # TODO: deal with multi dimensions
+                    ast.hoists.append(st.findSymbol(varName[0]))
+                else: # already defined
+                    if var.type != checkType:
+                        err("Attempting to assign expression of type: " + checkType + " -> " +
+                                var.type)
+                        print( ast.lineNum)
+                        print( fileLines[ast[0].lineNum-1])
 
-    elif ast.name == 'boolTerm':
-        # TODO: actually type check the tree
-        ast.type == 'boolean'
+                        return False
+            ast.type = ast[-1].type
+        
+    elif ast.name == 'boolExprList':
+        if len(ast) == 1:
+            ast.type = ast[0].type
+        else:
+            if isBool(asts(ast)):
+                ast.type = 'boolean'
+            else:
+                print( 'ERROR: or clauses without bool type' )
+
+    elif ast.name == 'boolTermList':
+        if len(ast) == 1:
+            ast.type = ast[0].type
+        else:
+            if isBool(asts(ast)):
+                ast.type = 'boolean'
+            else:
+                print( 'ERROR TBD')
 
     elif ast.name == 'boolFactor':
-        if ast.case(0) and isBool(ast[0]):
-            ast.type == 'boolean'
-        elif isBool(ast[1]):
-            ast.type == 'boolean'
+        if ast.case(0):
+            if isBool(ast[0]):
+                ast.type = 'boolean'
+            else: 
+                ast.type = ast[0].type 
+        elif ast.case(1):
+            if isBool(ast[1]):
+                ast.type = 'boolean'
+            else:
+                ast.type = ast[1].type
         else:
-            print( 'ERROR')
+            ast.type = ast[1].type
+        # print( '============')
+        # print( ast.type)
+        # print( ast)
+
 
     elif ast.name == 'simple-expression':
         if len(ast) == 1:
@@ -165,10 +211,13 @@ def errorCheck(ast, st):
 
     elif ast.name == 'factor':
         # TODO: fix fix fix
-        if len(ast) == 1:
+        if ast.case(0):
+            ast.type = ast[1].type
+        elif ast.case(1):
             if isinstance(ast[0], AST) and ast[0].name == 'var':
                 if st.checkScope(ast[0][0]):
-                    ast.type  = st.findSymbol(ast[0][0]).type
+                    var = st.findSymbol(ast[0][0])
+                    ast.type = var.type + '[]'*(var.dimensions - len(ast[0][1]))
             elif not isinstance(ast[0], AST):
                 ast.type = 'int'
                     
@@ -193,12 +242,13 @@ def errorCheck(ast, st):
             if child.isdigit():
                 ast.type.append('int')
     elif ast.name == 'var-declaration':
-        for name in ast[1]:
-            if st.checkScope(name):
-                print("ERROR: " + name + ' already defined in this scope')
+        for childname in ast[1]:
+            if st.checkScope(childname):
+                print("ERROR: " + childname + ' already defined in this scope')
                 return False
             else:
-                st.addSymbol(Var(name, ast[0].baseType + ast[0].brackets))
+                st.addSymbol(Var(childname, ast[0].baseType,
+                    ast[0].dimensions))
 
     elif ast.name == 'bracket-group':
         if len(ast.children) == 2:

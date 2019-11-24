@@ -1,6 +1,13 @@
 comparator = Int a b => {
-    Int c;
-    while (c < 10)
-        c = c + 1;
-    c
+    c = (a < b);
+    c = [ (a < b) => 1;
+    [ (a > b) => -1;
+    [ non => 0;;
+    a
 }
+
+fact = Int a => {
+    [ (a > b) => a(b);
+    [ non => 1;
+}
+
