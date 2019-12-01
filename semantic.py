@@ -1,31 +1,21 @@
 import sys
 from slr import *
 from AST import asts
+from varClasses import *
+from errors import *
+from typedef import *
 
 
-def err(errString): 
-    print( "ERROR: " + errString)
-
+e = Error(sys.argv[1])
 def isBool(*args):
     if isinstance(args[0], list):
-        return all([x.type == 'boolean' for x in args[0]])
+        return all([x.type == 'Bool' for x in args[0]])
     else:
-        return all([x.type == 'boolean' for x in args])
+        return all([x.type == 'Bool' for x in args])
 
 def allType(checkList, ast):
     return all(asts(ast))
 
-class Var:
-    def __init__(self, name, baseType, dimensions):
-        self.name = name
-        self.type = baseType
-        self.dimensions = dimensions
-class Fun:
-    def __init__(self, name, varType, paramNum):
-        self.name = name
-        self.type = varType
-        self.paramNum = paramNum
-        self.params = []
 
 """ Checks type and marks ast """
 def typeOf(ast):
@@ -82,6 +72,8 @@ def errorCheck(ast, st, fileLines):
 
     if ast.name == 'program':
         st.enterScope()
+    elif ast.name == 'productType':
+        st.enterScope()
 
     elif ast.name == 'fun-declaration':
         if len(ast[0].children) != 1 :
@@ -101,8 +93,29 @@ def errorCheck(ast, st, fileLines):
     
     for x in asts(ast):
         ast.hoists += x.hoists
+    
     if ast.name == 'param-list':
         pass
+
+    elif ast.name == 'productType':
+        st.exitScope()
+        st.addSymbol(Product(ast, st))
+    elif ast.name == 'sumType':
+        st.addSymbol(Sum(ast,st))
+    elif ast.name == 'constructor':
+        symbol = st.findSymbol(ast[0])
+        if symbol is None:
+            e.err("Constructor error\n" +
+                    'type ' + ast[0] + ' not defined' ,
+                    "Semantic",
+                    ast.lineNum)
+        elif ast[2].type not in symbol.signatures:
+            e.err("Constructor error\n" + 
+                    "No valid constructor of type: " + str(ast[2].type) + '\n' +
+                    "found for type " + symbol.name + "\n",
+                    "Semantic",
+                    ast.lineNum)
+
 
     elif ast.name == 'param':
         for childname in ast[1]:
@@ -119,7 +132,7 @@ def errorCheck(ast, st, fileLines):
         ast.type = ast[2].type
 
     elif ast.name == 'compound-stmt':
-        ast.type = ast[3].type
+        ast.type = ast[2].type
 
     elif ast.name == 'function-body':
         ast.type = ast[2].type
@@ -141,6 +154,8 @@ def errorCheck(ast, st, fileLines):
                     ast.hoists.append(st.findSymbol(varName[0]))
                 else: # already defined
                     if var.type != checkType:
+                        print( var.name)
+                        print( var.type)
                         err("Attempting to assign expression of type: " + checkType + " -> " +
                                 var.type)
                         print( ast.lineNum)
@@ -154,7 +169,7 @@ def errorCheck(ast, st, fileLines):
             ast.type = ast[0].type
         else:
             if isBool(asts(ast)):
-                ast.type = 'boolean'
+                ast.type = 'Bool'
             else:
                 print( 'ERROR: or clauses without bool type' )
 
@@ -163,19 +178,19 @@ def errorCheck(ast, st, fileLines):
             ast.type = ast[0].type
         else:
             if isBool(asts(ast)):
-                ast.type = 'boolean'
+                ast.type = 'Bool'
             else:
                 print( 'ERROR TBD')
 
     elif ast.name == 'boolFactor':
         if ast.case(0):
             if isBool(ast[0]):
-                ast.type = 'boolean'
+                ast.type = 'Bool'
             else: 
                 ast.type = ast[0].type 
         elif ast.case(1):
             if isBool(ast[1]):
-                ast.type = 'boolean'
+                ast.type = 'Bool'
             else:
                 ast.type = ast[1].type
         else:
@@ -189,7 +204,7 @@ def errorCheck(ast, st, fileLines):
         if len(ast) == 1:
             ast.type = ast[0].type
         else:
-            ast.type = 'boolean'
+            ast.type = 'Bool'
 
     elif ast.name == 'additive-expression':
         if len(ast) == 1:
@@ -219,13 +234,13 @@ def errorCheck(ast, st, fileLines):
                     var = st.findSymbol(ast[0][0])
                     ast.type = var.type + '[]'*(var.dimensions - len(ast[0][1]))
             elif not isinstance(ast[0], AST):
-                ast.type = 'int'
+                ast.type = 'Int'
                     
             else:
-                ast.type = 'int'
+                ast.type = 'Int'
         #TODO: Else
         else:
-            ast.type = 'int'
+            ast.type = 'Int'
             # if ast[0].type == ast[2].type:
                 # ast.type =  ast[0].type
             # else: print('ERROR')
@@ -240,7 +255,7 @@ def errorCheck(ast, st, fileLines):
         ast.type = []
         for child in ast[2]:
             if child.isdigit():
-                ast.type.append('int')
+                ast.type.append('Int')
     elif ast.name == 'var-declaration':
         for childname in ast[1]:
             if st.checkScope(childname):
@@ -260,6 +275,11 @@ def errorCheck(ast, st, fileLines):
         ast.baseType = ast[0].lower()
         ast.dimensions = len(ast[1].children)
         ast.brackets = ''.join([singlet.singlet for singlet in ast[1]])
+
+    elif ast.name == 'args':
+        ast.type = ast[0].type
+    elif ast.name == 'arg-list':
+        ast.type = tuple([x.type for x in asts(ast)])
 
 
     elif ast.name == 'fun-declaration':

@@ -8,8 +8,9 @@ import re
 identifiers = "[a-z]([a-zA-Z]|[0-9])*"
 types = "[A-Z][a-z]*"
 numbers = "[0-9]+"
-symbols = "->|=>|\{|\}|\[|\]|\(|\)|<=|>=|==|!=|=|<|>|;|\+|\-|\*|/|v|\^|,|:"
-keywordsList = ["else","if","int","return","void","while","in","non","or","and", "not", "v"]
+symbols = "->|=>|\{|\}|\[|\]|\(|\)|<=|>=|==|!=|=|<|>|;|\+|\-|\*|/|v|\^|,|:|\|"
+keywordsList = ["else","if","int","return","void","while","in","non","or","and", "not", "v",
+        "type"]
 keywords = "|".join([x + "(?![a-zA-Z0-9])" for x in keywordsList])  # Use lookahead to make sure
 commentStart = "/\*"
 commentEnd = "\*/"

@@ -2,56 +2,70 @@ from slr import SLRParser
 from AST import AST
 from AST import flattenLists
 from AST import asts
+from varClasses import *
 from semantic import *
+from typedef import *
 import sys
 
+
+promotions = {
+    'Char': 'int',
+    'Float': 'double',
+    'Bool': 'int'
+}
+""" indent functions plus newline """
+
+includes = ['stdarg','stdlib','stdio']
 tab = ' '*4
+def pref(td):
+    return tab*(td)
+
+def l0(s):
+    return s + '\n'
+
+def l1(s): 
+    return pref(1) + s + '\n'
+
+def l2(s):
+    return pref(2) + s + '\n'
+
+def line(s, indent):
+    return pref(indent) + s + '\n'
+
+def constructor(typ):
+    name = typ.name
+    ret = name + '* create' + name + '(' + name + 'Case type, ...)\n' 
+    ret += l1(name + '* ret = malloc(sizeof('+ name +'));')
+    ret += l1('va_list args;')
+    ret += l1('va_start(args, type);')
+    ifpref = 'if (type == '
+    for i, item in enumerate(typ.types):
+        print( item)
+        if i == 0:
+            ret += l1(ifpref + item + name + ') {')
+            ret += pref(1) + '}'
+            """ 
+            ret->polar.r = (va_arg(args, double));
+            """
+        elif i < len(typ.types)-1:
+            ret += l0(' else ' + ifpref + item + name + ') {')
+            ret += pref(1) + '}'
+        else:
+            ret += l0(' else ' + ifpref + item + name + ') {')
+            ret += pref(1) + '}\n'
+
+    ret += pref(1) + 'va_end(args);\n'
+    ret += pref(1) + 'return ret;\n}'
+    return ret
+
+def inc(string):
+    return '#incude<' + string + '.h>'
+
 
 # Final statement or return statement
-class Body:
-    def __init__(self, funBodyASTNode):
-        self.type = funBodyASTNode.type
 
-class Function:
-    def __init__(self, anonymousFunctionASTNode):
-        self.params = Parameters(anonymousFunctionASTNode[0])
-        self.body =  Body(anonymousFunctionASTNode[2])
-        self.returnType = self.body.type
-
-class Type: 
-    def __init__(self, typeSpecifierASTNode):
-        self.baseType = typeSpecifierASTNode[0]
-        self.dimensions = len(typeSpecifierASTNode[1].children)
-
-    def __eq__(self, other):
-        return (self.dimensions == other.dimensions and
-                self.baseType == other.baseType)
-
-    def __str__(self):
-        return self.baseType.lower()
-
-
-class Parameters:
-    def __init__(self, paramASTNode):
-        self.params = []
-        for param in paramASTNode[0]:
-            if param != ',':
-                self.params.append((Type(param[0]), param[1].children))
-
-    def __str__(self):
-        ret = '('
-        varList = []
-        for typeInfo, nameList in self.params:
-            for childname in nameList:
-                varList.append(str(typeInfo) + ' ' + 
-                        str(childname) +
-                        '[]'*typeInfo.dimensions)
-        ret += ', '.join(varList)
-        ret += ')'
-        return ret
-
-
-def genC(ast, st, tabDepth):
+# td short for tabDepth
+def genC(ast, st, td):
     ret = ''
     if not isinstance(ast, AST):
         return ''
@@ -59,9 +73,12 @@ def genC(ast, st, tabDepth):
     if name == 'program':
         st.enterScope()
 
+    if  name == 'productType':
+        td+=1
+
     if name == 'var-declaration':
         for childname in ast[1]:
-            st.addSymbol(Var(name, ast[0].baseType + ast[0].brackets,0))
+            st.addSymbol(Var(childname, ast[0].baseType + ast[0].brackets,0))
     elif name == 'assignment':
         for childname, value, typ in zip(ast[0],ast[2], ast.type):
             if not st.checkScope(name):
@@ -70,8 +87,7 @@ def genC(ast, st, tabDepth):
             else:
                 ret += childname + ' = ' + value + ';\n'
     elif name == 'fun-declaration':
-        ret += '\n' + ast.returnType.lower().replace('[]','*') + ' ' + ast[0][0] + str(Function(ast[2]).params) + ' {\n'
-        tabDepth += 1
+        td += 1
 
     if name == 'final-stmt' and ast[0].name == 'other-selection-stmt':
         ast[0].selectionResolution = 'return'
@@ -89,27 +105,30 @@ def genC(ast, st, tabDepth):
             ast[-1].selectionResolution = ''
 
     if name == 'iteration-stmt':
-        tabDepth += 1
+        td += 1
+    if name == 'compound-stmt':
+        td += 1
 
 
     """ top down above """
     for child in ast:
-        ret += genC(child, st, tabDepth)
+        ret += genC(child, st, td)
     """ bottom up below """
 
     if name == 'anonymous-function':
         ast.cstr = ast[2].cstr
-        ret += ast.cstr
     elif name == 'function-body':
         ast.cstr = ast[1].cstr + ast[2].cstr
+    elif name == 'compound-stmt':
+        ast.cstr = ast[1].cstr + ast[2].cstr
     elif name == 'local-declarations-list':
-        ast.cstr = ((tab*tabDepth)+"\n").join([x.cstr for x in ast])
+        ast.cstr = ((tab*td)+"\n").join([x.cstr for x in ast])
     elif name == 'iteration-stmt':
         if ast.case(0):
-            ast.cstr = (tab*(tabDepth-1))
+            ast.cstr = (tab*(td-1))
             ast.cstr += 'while ' + ast[2].cstr + ' {\n' 
             ast.cstr += ast[5].cstr
-            ast.cstr += '\n' + (tab*(tabDepth-1)) + '}\n'
+            ast.cstr += '\n' + (tab*(td-1)) + '}\n'
     elif name == 'final-stmt':
         #TODO figure out the casese
         # If this is the last one in a function and only contains a simple
@@ -120,7 +139,7 @@ def genC(ast, st, tabDepth):
             ast.cstr = 'return ' +  ast[0].cstr + ';\n'
         else: 
             ast.cstr = 'selectionResolution ' + ast[0].cstr
-        #ret += tab*tabDepth + 'return ' + ast[0].cstr + ';\n'
+        #ret += tab*td + 'return ' + ast[0].cstr + ';\n'
 
     elif ast.name in ['addop','relop','mulop']:
         ast.cstr = ast[0]
@@ -138,18 +157,19 @@ def genC(ast, st, tabDepth):
         ast.cstr = ast[0].cstr + ast[1] + ast[2].cstr + ast[3]
     elif name == 'args':
         ast.cstr = ast[0].cstr
+        ast.type = ast[0].type
     elif name == 'arg-list':
         ast.cstr = ','.join([x.cstr for x in asts(ast)])
+        ast.type = tuple([x.type for x in asts(ast)])
     elif name == 'statement-list':
         ast.cstr = '\n'.join([x.cstr for x in ast])
     elif name == 'statement':
         ast.cstr = ast[0].cstr
     elif name == 'expression-stmt':
-        ast.cstr = (tab*tabDepth) +ast[0].cstr + ';'
+        ast.cstr = (tab*td) +ast[0].cstr + ';'
     elif name == 'expressionList':
         if ast[-1].name == 'other-selection-stmt':
             resolved = ' = '.join([x.cstr + '' for x in asts(ast[:-1])])
-            print( resolved)
             ast.cstr = ast[-1].cstr.replace('selectionResolution', resolved + ' =' )
         elif len(ast) > 1:
             ast.cstr = ' = '.join([x.cstr for x in asts(ast)])
@@ -159,9 +179,48 @@ def genC(ast, st, tabDepth):
     elif name == 'var-declaration':
         ast.cstr = '' 
         for childname in ast[1]:
-            ast.cstr += tab*tabDepth
+            ast.cstr += tab*td
             ast.cstr += st.findSymbol(childname).type + ' ' + childname
             ast.cstr += ';\n'
+    elif name == 'declaration':
+        ast.cstr = ast[0].cstr
+    elif name == 'dataDeclaration':
+        ast.cstr = ast[0].cstr
+    elif name == 'constructor':
+        typeclass = st.findSymbol(ast[0])
+        ast.cstr = '//construct ' + typeclass.name + ':' + typeclass.signatures[ast[2].type] + '\n'
+
+
+    elif name == 'productType':
+        ast.cstr = 'typedef struct '+ast[1].lower()+' {\n'
+        ast.cstr += ast[4].cstr
+        ast.cstr += '} ' + ast[1] + ';\n'
+        st.addSymbol(Product(ast,st))
+    elif name == 'memberList':
+        ast.cstr = ''.join([x.cstr for x in ast])
+    elif name == 'sumType':
+        # enum of cases/types for tagged union
+        typeName = ast[1]
+        typeList = [x for x in ast[3] if x != '|']
+        ast.cstr = 'typedef enum ' + typeName.lower() + 'case'
+        ast.cstr += ' {\n'
+        ast.cstr += tab*(td+1) +','.join([x + typeName for x in typeList])
+        ast.cstr += '\n} ' + typeName + 'Case;\n\n' 
+        #TODO: 
+        ast.cstr += 'typedef struct {\n'
+        #ast.cstr += tab*(td+1) + 'enum pointcase case;\n'
+        ast.cstr += pref(td+1) + typeName + 'Case type;\n'
+        ast.cstr += tab*(td+1) + 'union {\n'
+        st.addSymbol(Sum(ast,st))
+        for innerTypeName in typeList:
+            ast.cstr += pref(td+2)
+            ast.cstr += innerTypeName + ' ' + innerTypeName.lower()
+            ast.cstr += ';\n'
+
+        ast.cstr += (tab*(td+1)) +'};\n'
+        ast.cstr += (tab*td) + '} ' + typeName + ';\n\n' 
+        ast.cstr += constructor(st.findSymbol(ast[1]))
+
     elif name == 'var':
         if ast.case(0):
             ast.cstr = ast[0] + ast[1].cstr
@@ -199,7 +258,7 @@ def genC(ast, st, tabDepth):
     elif name == 'clause-list':
         for index, child in enumerate(ast):
             if index == 0:
-                ast.cstr = tab*tabDepth + 'if '+ child.cstr
+                ast.cstr = tab*td + 'if '+ child.cstr
             else:
                 ast.cstr += ' else if ' + child.cstr
     elif name == 'boolTermList':
@@ -223,37 +282,46 @@ def genC(ast, st, tabDepth):
     elif name == 'final-clause':
         ast.cstr = '{\n'
         if ast[3][0].name == 'other-selection-stmt':
-            ast.cstr = '{\n' + tab*tabDepth + ast[3].cstr.replace('\n','\n'+(tab))
-            ast.cstr += '\n' + tab*(tabDepth) +'}'
+            ast.cstr = '{\n' + tab*td + ast[3].cstr.replace('\n','\n'+(tab))
+            ast.cstr += '\n' + tab*(td) +'}'
         else:
             if ast.selectionResolution != 'return':
-                ast.cstr += tab*(tabDepth+1)
+                ast.cstr += tab*(td+1)
                 ast.cstr += ast[3].cstr + ';\n'
             else:
                 if ast[3].name != 'other-selection-stmt':
-                    ast.cstr += tab*(tabDepth+1)
+                    ast.cstr += tab*(td+1)
                     ast.cstr += ast[3].cstr
-            ast.cstr += tab*(tabDepth) + '}' 
+            ast.cstr += tab*(td) + '}' 
 
     elif name == 'clause':
         ast.cstr = ast[2].cstr + ' {\n'
-        if ast[5][0].name == 'other-selection-stmt':
-            ast.cstr += tab*tabDepth + ast[5].cstr.replace('\n','\n'+(tab))
-            ast.cstr += '\n' + tab*(tabDepth) +'}'
+        if ast[5].name == 'final-stmt' and ast[5][0].name == 'other-selection-stmt':
+            ast.cstr += tab*td + ast[5].cstr.replace('\n','\n'+(tab))
+            ast.cstr += '\n' + tab*(td) +'}'
         else:
             if ast.selectionResolution != 'return':
-                ast.cstr += tab*(tabDepth+1)
+                ast.cstr += tab*(td+1)
                 ast.cstr += ast[5].cstr
                 ast.cstr += ';\n'
             else:
                 if ast[5].name != 'other-selection-stmt':
-                    ast.cstr += tab*(tabDepth+1)
+                    ast.cstr += tab*(td+1)
                     ast.cstr += ast[5].cstr
-            ast.cstr += tab*(tabDepth) + '}' 
+            ast.cstr += tab*(td) + '}' 
 
     elif name == 'fun-declaration':
-        ret += '\n}\n'
-        tabDepth -= 1
+        ast.cstr  = '\n' + ast.returnType.lower().replace('[]','*') + ' ' + ast[0][0] + str(Function(ast[2]).params) + ' {\n'
+        ast.cstr += ast[2].cstr
+        ast.cstr += '\n}\n'
+        td -= 1
+    
+    elif name == 'declaration-list':
+        ast.cstr = '\n'.join([x.cstr for x in ast])
+    elif name == 'program':
+        ast.cstr = '\n'.join([inc(x) for x in includes]) + '\n'
+        st.exitScope()
+        return ast.cstr + ast[0].cstr
 
     return ret
 
@@ -268,6 +336,6 @@ valid =  errorCheck(flattenedListAST,
         parser.lexer.infileLines)
 
 if valid:
- print( genC (flattenedListAST, SymbolTable(), 0))
+    print( genC (flattenedListAST, SymbolTable(), 0))
 
 

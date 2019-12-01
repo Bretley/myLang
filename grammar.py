@@ -21,7 +21,7 @@ class Grammar:
         for index,line in enumerate(grammarLines):
             lhs, rhs = line.split(" --> ")
             self.lhs.append(lhs)
-            rhs = rhs.split(" | ")
+            rhs = rhs.split(" || ")
             rhs = [x.split(" ") for x in rhs]
             for x in rhs:
                 for y in x:
