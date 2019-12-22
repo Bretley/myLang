@@ -1,10 +1,11 @@
 import sys
 from slr import *
-from AST import asts
-from varClasses import *
-from errors import *
-from typedef import *
+from AST import asts, AST
+from varClasses import Var
+from errors import Error
+from typedef import Product, Sum
 from symTable import *
+from defaults import isDefault
 
 
 e = Error(sys.argv[1])
@@ -21,7 +22,7 @@ def typeOf(ast):
     if ast.name in ['compound-stmt', 'final-stmt']:
         ast.type = typeOf(ast[0]) # type of final/compound
     elif ast.name == 'simple-expression' and len(ast.children) == 1:
-        ast.type = typeof(ast[0])
+        ast.type = typeOf(ast[0])
     return ast.type
 
 def listLen(ast, name):
@@ -42,6 +43,11 @@ def errorCheck(ast, st, namedST, fileLines):
     if ast.name == 'program':
         st.enterScope()
     elif ast.name == 'productType':
+        e.err_if(isDefault(ast[1]),
+                 'Type definition error\n' +
+                 'type ' + ast[1] + ' already defined',
+                 'Semantic',
+                 ast.lineNum-1)
         st.enterScope()
         namedST.addScope(ast[1], {})
         namedST.enterScope(ast[1])
@@ -51,7 +57,7 @@ def errorCheck(ast, st, namedST, fileLines):
             err( "only one name per function definition allowed")
             return False
         st.enterScope()
-        namedST.addScope(ast[0][0],{})
+        namedST.addScope(ast[0][0], {})
         namedST.enterScope(ast[0][0])
 
     """ Top down above here """
@@ -75,70 +81,60 @@ def errorCheck(ast, st, namedST, fileLines):
         st.addSymbol(Sum(ast,st))
     elif ast.name == 'constructor':
         symbol = st.findSymbol(ast[0])
-        if symbol is None:
-            e.err("Constructor error\n" +
-                    'type ' + ast[0] + ' not defined' ,
-                    "Semantic",
-                    ast.lineNum)
-        elif ast[2].type != symbol.signatures:
-            print( symbol.signatures)
-            print( ast[2].type)
-            e.err("Constructor error\n" + 
-                    "No valid constructor of type: " + str(ast[2].type) + '\n' +
-                    "found for type " + symbol.name + "\n",
-                    "Semantic",
-                    ast.lineNum)
-        else:
-            ast.type = ast[0]
+        e.err_if(symbol is None,
+                 'Constructor error\n' + 'type ' + ast[0] + ' not defined' ,
+                 'Semantic',
+                 ast.lineNum)
+
+        e.err_if(ast[2].type != symbol.signatures,
+                 'Constructor error\n' +
+                 'No valid constructor of type: ' + str(ast[2].type) + '\n' +
+                 'found for type ' + symbol.name + '\n',
+                 'Semantic',
+                 ast.lineNum)
+
+        ast.type = ast[0]
 
     elif ast.name == 'namedParam':
-        for childname in ast[1]:
-            #print( name + ast[0].brackets)
-            if not st.checkScope(childname): 
-                st.addSymbol(Var(childname, ast[0].baseType,
-                    ast[0].dimensions, 'param'))
-            else:
-                # TODO: Error msg for parameters with same name
-                print( 'renamed param')
+        for name in ast[1]:
+            e.err_if(st.checkScope(name),
+                     'Parameter Error:\n' + 'variable ' + name + ' already defined'
+                     'Semantic', ast.lineNum)
+            v = Var(name, ast[0].baseType, ast[0].dimensions, 'param')
+            st.addSymbol(v)
+
     elif ast.name == 'destructuredParam':
-        if ast[0].dimensions > 0:
-            #TODO: error message for
-            # type specifier with dimension higher than 0
-            # for  a destructured parameter
-            print( 'higher dimension than 0 for destructure')
-            pass
-        elif isDefault(ast[0][0]):
-            #TODO: error for default type in destructure
-            print( 'defualt in param')
-            pass
+        e.err_if(ast[0].dimensions > 0,
+                 'Type specifier has dimension higher than 0',
+                 'Semantic', ast.lineNum)
+
+        e.err_if(isDefault(ast[0][0]),
+                 'Trying to destructure a default param',
+                 'Semantic', ast.lineNum)
+
         typ = st.findSymbol(ast[0][0])
-        if typ is None:
-            #TODO: Error for type not being defined
-            pass
-        elif not isinstance(typ, Product):
-            #TODO: error for must be product to be destructured
-            print( 'not a product')
-            pass
-        else:
-            for name in ast[2]:
-                var = typ.get(name)
-                if var is None:
-                    #TODO: Error for illegal accessor name in destructure
-                    pass
-                elif st.checkScope(var.name):
-                    #TODO: error for redefining param
-                    # Does this even make sense? if you can't rename the param
-                    # then no
-                    pass
-                else:
-                    st.addSymbol(
-                        Var(
-                            var.name,
-                            var.type,
-                            var.dimensions,
-                            'destructuredParam'
-                        )
-                    )
+
+        e.err_if(typ is None,
+                 'Type not defined before use in destructure',
+                 'Semantic', ast.lineNum)
+
+        e.err_if(not isinstance(typ, Product),
+                 'Type used in destructure is not a product',
+                 'Semantic', ast.lineNum)
+
+        for name in ast[2]:
+            var = typ.get(name)
+            #TODO: Make these better pls
+            e.err_if(var is None,
+                     'Name within destructure not a member of the enclosing Type',
+                     'Semantic', ast.lineNum)
+
+            e.err_if(st.checkScope(var.name),
+                     'Param ' + var.name + ' already defined',
+                     'Semantic', ast.linenum)
+
+            v = Var(var.name, var.type, var.dimensions, 'destructuredParam')
+            st.addSymbol(v)
 
     elif ast.name == 'fun-declaration':
         namedST.setScope(st.exitScope())
@@ -228,7 +224,7 @@ def errorCheck(ast, st, namedST, fileLines):
             ast.type = ast[0].type
         else: 
             if ast[0].type == ast[2].type:
-                ast.type =  ast[0].type
+                ast.type = ast[0].type
             else:
                 print('ERROR: in additive-expression')
 
