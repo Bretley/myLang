@@ -5,624 +5,735 @@
     "declaration-list"
    ]
   ]
- }, 
+ },
  {
   "declaration-list": [
    [
-    "declaration-list", 
+    "declaration-list",
     "declaration"
-   ], 
+   ],
    [
     "declaration"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "declaration": [
    [
     "var-declaration"
-   ], 
+   ],
    [
     "fun-declaration"
+   ],
+   [
+    "dataDeclaration"
    ]
   ]
- }, 
+ },
+ {
+  "dataDeclaration": [
+   [
+    "sumType"
+   ],
+   [
+    "productType"
+   ]
+  ]
+ },
+ {
+  "sumType": [
+   [
+    "type",
+    "TYPE",
+    "=",
+    "typeBarList",
+    ";"
+   ]
+  ]
+ },
+ {
+  "productType": [
+   [
+    "type",
+    "TYPE",
+    "=",
+    "{",
+    "memberList",
+    "}"
+   ]
+  ]
+ },
+ {
+  "typeBarList": [
+   [
+    "typeBarList",
+    "|",
+    "TYPE"
+   ],
+   [
+    "TYPE"
+   ]
+  ]
+ },
+ {
+  "memberList": [
+   [
+    "memberList",
+    "var-declaration"
+   ],
+   [
+    "var-declaration"
+   ]
+  ]
+ },
  {
   "assignment": [
    [
-    "ID-space-list", 
-    "=", 
+    "ID-space-list",
+    "=",
     "NUM-space-list"
-   ], 
+   ],
    [
-    "ID-space-list", 
-    "=", 
-    "simple-expression", 
+    "ID-space-list",
+    "=",
+    "simple-expression",
     ";"
-   ], 
+   ],
    [
-    "ID-space-list", 
-    "=", 
+    "ID-space-list",
+    "=",
     "other-selection-stmt"
    ]
   ]
- }, 
+ },
+ {
+  "constructor": [
+   [
+    "TYPE",
+    "(",
+    "args",
+    ")"
+   ]
+  ]
+ },
  {
   "var-declaration": [
    [
-    "type-specifier", 
-    "ID-space-list", 
+    "type-specifier",
+    "ID-space-list",
     ";"
    ]
   ]
- }, 
+ },
  {
   "NUM-space-list": [
    [
-    "NUM-space-list", 
+    "NUM-space-list",
     "NUM"
-   ], 
+   ],
    [
     "NUM"
    ]
   ]
- }, 
+ },
  {
   "ID-space-list": [
    [
-    "ID-space-list", 
+    "ID-space-list",
     "ID"
-   ], 
+   ],
    [
     "ID"
    ]
   ]
- }, 
+ },
  {
   "TYPE-list": [
    [
-    "TYPE-list", 
-    ",", 
+    "TYPE-list",
+    ",",
     "TYPE"
-   ], 
+   ],
    [
     "TYPE"
    ]
   ]
- }, 
+ },
  {
   "TYPE-space-list": [
    [
-    "TYPE-list", 
+    "TYPE-list",
     "TYPE"
-   ], 
+   ],
    [
     "TYPE"
    ]
   ]
- }, 
+ },
  {
   "type-specifier": [
    [
-    "TYPE", 
+    "TYPE",
     "bracket-list"
    ]
   ]
- }, 
+ },
  {
   "bracket-list": [
    [
-    "bracket-list", 
+    "bracket-list",
     "bracket-group"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "bracket-group": [
    [
-    "[", 
+    "[",
     "]"
-   ], 
+   ],
    [
-    "[", 
-    "NUM", 
+    "[",
+    "NUM",
     "]"
    ]
   ]
- }, 
+ },
  {
   "fun-declaration": [
    [
-    "ID-space-list", 
-    "=", 
+    "ID-space-list",
+    "=",
     "anonymous-function"
    ]
   ]
- }, 
+ },
  {
   "anonymous-function": [
    [
-    "params", 
-    "=>", 
+    "params",
+    "=>",
     "function-body"
-   ], 
+   ],
    [
-    "params", 
-    "=>", 
+    "params",
+    "=>",
     "final-stmt"
    ]
   ]
- }, 
+ },
+ {
+  "anonymous-call": [
+   [
+    "(",
+    "params",
+    ")",
+    "=>",
+    "function-body"
+   ]
+  ]
+ },
  {
   "function-body": [
    [
-    "{", 
-    "statement-list", 
-    "final-stmt", 
+    "{",
+    "statement-list",
+    "final-stmt",
     "}"
    ]
   ]
- }, 
+ },
  {
   "map-comprehension": [
    [
-    "[", 
-    "ID", 
-    "in", 
-    "ID", 
-    "=>", 
-    "final-stmt", 
+    "[",
+    "ID",
+    "in",
+    "ID",
+    "=>",
+    "final-stmt",
     "]"
-   ], 
+   ],
    [
-    "[", 
-    "ID", 
-    "in", 
-    "ID", 
-    "=>", 
-    "function-body", 
+    "[",
+    "ID",
+    "in",
+    "ID",
+    "=>",
+    "function-body",
     "]"
    ]
   ]
- }, 
+ },
  {
   "params": [
    [
     "param-list"
+   ],
+   [
+    "non"
    ]
   ]
- }, 
+ },
  {
   "param-list": [
    [
-    "param-list", 
-    ",", 
+    "param-list",
+    ",",
     "param"
-   ], 
+   ],
    [
     "param"
    ]
   ]
- }, 
+ },
  {
   "param": [
    [
-    "type-specifier", 
-    "ID-space-list"
+    "namedParam"
+   ],
+   [
+    "destructuredParam"
    ]
   ]
- }, 
+ },
  {
-  "compound-stmt": [
+  "destructuredParam": [
    [
-    "{", 
-    "local-declarations-list", 
-    "statement-list", 
-    "final-stmt", 
+    "type-specifier",
+    "{",
+    "ID-space-list",
     "}"
    ]
   ]
- }, 
+ },
+ {
+  "namedParam": [
+   [
+    "type-specifier",
+    "ID-space-list"
+   ]
+  ]
+ },
+ {
+  "compound-stmt": [
+   [
+    "{",
+    "statement-list",
+    "final-stmt",
+    "}"
+   ]
+  ]
+ },
  {
   "local-declarations-list": [
    [
-    "local-declarations-list", 
+    "local-declarations-list",
     "var-declaration"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "statement-list": [
    [
-    "statement-list", 
+    "statement-list",
     "statement"
-   ], 
+   ],
    [
     "statement"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "statement": [
    [
     "expression-stmt"
-   ], 
+   ],
    [
     "selection-stmt"
-   ], 
+   ],
    [
     "iteration-stmt"
    ]
   ]
- }, 
+ },
  {
   "final-stmt": [
    [
     "simple-expression"
-   ], 
+   ],
    [
     "other-selection-stmt"
    ]
   ]
- }, 
+ },
  {
   "expression-stmt": [
    [
-    "expressionList", 
+    "expressionList",
     ";"
-   ], 
+   ],
    [
     ";"
    ]
   ]
- }, 
+ },
  {
   "other-selection-stmt": [
    [
-    "clause-list", 
+    "clause-list",
     "final-clause"
    ]
   ]
- }, 
+ },
  {
   "final-clause": [
    [
-    "[", 
-    "non", 
-    "=>", 
+    "[",
+    "non",
+    "=>",
     "compound-stmt"
-   ], 
+   ],
    [
-    "[", 
-    "non", 
-    "=>", 
-    "final-stmt", 
+    "[",
+    "non",
+    "=>",
+    "final-stmt",
     ";"
    ]
   ]
- }, 
+ },
  {
   "clause-list": [
    [
-    "clause-list", 
+    "clause-list",
     "clause"
-   ], 
+   ],
    [
     "clause"
    ]
   ]
- }, 
+ },
  {
   "clause": [
    [
-    "[", 
-    "(", 
-    "boolExprList", 
-    ")", 
-    "=>", 
-    "final-stmt", 
+    "[",
+    "(",
+    "boolExprList",
+    ")",
+    "=>",
+    "final-stmt",
     ";"
-   ], 
+   ],
    [
-    "[", 
-    "(", 
-    "boolExprList", 
-    ")", 
-    "=>", 
-    "compound-stmt", 
-    ""
+    "[",
+    "(",
+    "boolExprList",
+    ")",
+    "=>",
+    "compound-stmt"
    ]
   ]
- }, 
+ },
  {
   "selection-stmt": [
    [
-    "if", 
-    "(", 
-    "boolExprList", 
-    ")", 
-    "{", 
-    "statement-list", 
+    "if",
+    "(",
+    "boolExprList",
+    ")",
+    "{",
+    "statement-list",
     "}"
-   ], 
+   ],
    [
-    "if", 
-    "(", 
-    "boolExprList", 
-    ")", 
-    "{", 
-    "statement-list", 
-    "}", 
-    "else", 
-    "{", 
-    "statement-list", 
+    "if",
+    "(",
+    "boolExprList",
+    ")",
+    "{",
+    "statement-list",
+    "}",
+    "else",
+    "{",
+    "statement-list",
     "}"
    ]
   ]
- }, 
+ },
  {
   "elseifList": [
    [
-    "elseifList", 
+    "elseifList",
     "elseif"
-   ], 
+   ],
    [
     "elseif"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "elseif": [
    [
-    "else", 
-    "if", 
-    "(", 
-    "boolExprList", 
-    ")", 
-    "{", 
-    "statement-list", 
+    "else",
+    "if",
+    "(",
+    "boolExprList",
+    ")",
+    "{",
+    "statement-list",
     "}"
    ]
   ]
- }, 
+ },
  {
   "iteration-stmt": [
    [
-    "while", 
-    "(", 
-    "expressionList", 
-    ")", 
-    "{", 
-    "statement-list", 
+    "while",
+    "(",
+    "expressionList",
+    ")",
+    "{",
+    "statement-list",
     "}"
    ]
   ]
- }, 
+ },
  {
   "return-stmt": [
    [
-    "return", 
+    "return",
     ";"
-   ], 
+   ],
    [
-    "return", 
-    "expressionList", 
+    "return",
+    "expressionList",
     ";"
    ]
   ]
- }, 
+ },
  {
   "expressionList": [
    [
-    "var", 
-    "=", 
+    "var",
+    "=",
     "expressionList"
-   ], 
+   ],
    [
     "boolExprList"
-   ], 
+   ],
    [
+    "var",
+    "=",
     "other-selection-stmt"
+   ],
+   [
+    "var",
+    "=",
+    "constructor"
    ]
   ]
- }, 
+ },
  {
   "var": [
    [
-    "ID", 
+    "ID",
     "bracket-list"
    ]
   ]
- }, 
+ },
  {
   "boolExprList": [
    [
-    "boolExprList", 
-    "v", 
+    "boolExprList",
+    "v",
     "boolTermList"
-   ], 
+   ],
    [
     "boolTermList"
    ]
   ]
- }, 
+ },
  {
   "boolTermList": [
    [
-    "boolTermList", 
-    "^", 
+    "boolTermList",
+    "^",
     "boolFactor"
-   ], 
+   ],
    [
     "boolFactor"
    ]
   ]
- }, 
+ },
  {
   "boolFactor": [
    [
     "simple-expression"
-   ], 
+   ],
    [
-    "not", 
+    "not",
     "simple-expression"
-   ], 
+   ],
    [
-    "(", 
-    "boolExprList", 
+    "(",
+    "boolExprList",
     ")"
    ]
   ]
- }, 
+ },
  {
   "simple-expression": [
    [
-    "additive-expression", 
-    "relop", 
+    "additive-expression",
+    "relop",
     "additive-expression"
-   ], 
+   ],
    [
     "additive-expression"
    ]
   ]
- }, 
+ },
  {
   "relop": [
    [
     "<="
-   ], 
+   ],
    [
     "<"
-   ], 
+   ],
    [
     ">"
-   ], 
+   ],
    [
     ">="
-   ], 
+   ],
    [
     "=="
-   ], 
+   ],
    [
     "!="
    ]
   ]
- }, 
+ },
  {
   "additive-expression": [
    [
-    "additive-expression", 
-    "addop", 
+    "additive-expression",
+    "addop",
     "term"
-   ], 
+   ],
    [
     "term"
    ]
   ]
- }, 
+ },
  {
   "addop": [
    [
     "+"
-   ], 
+   ],
    [
     "-"
    ]
   ]
- }, 
+ },
  {
   "term": [
    [
-    "term", 
-    "mulop", 
+    "term",
+    "mulop",
     "factor"
-   ], 
+   ],
    [
     "factor"
    ]
   ]
- }, 
+ },
  {
   "mulop": [
    [
     "*"
-   ], 
+   ],
    [
     "/"
    ]
   ]
- }, 
+ },
  {
   "factor": [
    [
-    "(", 
-    "expressionList", 
+    "(",
+    "expressionList",
     ")"
-   ], 
+   ],
    [
     "var"
-   ], 
+   ],
    [
     "call"
-   ], 
+   ],
    [
     "NUM"
-   ], 
+   ],
    [
-    "-", 
+    "-",
     "NUM"
    ]
   ]
- }, 
+ },
  {
   "call": [
    [
-    "var", 
-    "(", 
-    "args", 
+    "var",
+    "(",
+    "args",
     ")"
    ]
   ]
- }, 
+ },
  {
   "args": [
    [
     "arg-list"
-   ], 
+   ],
    [
     "empty"
    ]
   ]
- }, 
+ },
  {
   "arg-list": [
    [
-    "arg-list", 
-    ",", 
+    "arg-list",
+    ",",
     "expressionList"
-   ], 
+   ],
    [
-    "arg-list", 
-    ",", 
+    "arg-list",
+    ",",
     "anonymous-function"
-   ], 
+   ],
    [
     "expressionList"
+   ],
+   [
+    "anonymous-function"
    ]
   ]
  }

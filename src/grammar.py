@@ -1,4 +1,5 @@
 import json
+from separator import *
 class Grammar:
     def __init__(self, specString): 
         self.spec = specString
@@ -207,9 +208,9 @@ class Grammar:
                 cur = []
                 for x in range(len(production)+1):
                     if x < len(production) and production[x] == "empty":
-                        cur.append(["."])
+                        cur.append([itemSeparator])
                         break
-                    cur.append(production[0:x] +  ["."] + production[x:len(production)])
+                    cur.append(production[0:x] +  [itemSeparator] + production[x:len(production)])
                 self.items[lhs].append(cur)
 
 
@@ -224,9 +225,5 @@ class Grammar:
 
     def isTerminal(self, curSymbol):
         return curSymbol not in self.grammarTable
-
-
-
-    
 
 

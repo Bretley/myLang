@@ -1,4 +1,5 @@
 from grammar import Grammar
+from separator import *
 class DFA:
     def __init__(self, grammar):
         self.transitionTable = {}
@@ -6,7 +7,7 @@ class DFA:
         items = grammar.getItems()
         self.itemMap = {}
         self.grammar = grammar
-        self.startState = "DummyStart -> . " + grammar.getStartSymbol()
+        self.startState = "DummyStart -> " + itemSeparator + " " + grammar.getStartSymbol()
         self.state = self.startState
         # Prelim transition table setup
         for lhs in lhsArr:
@@ -28,7 +29,7 @@ class DFA:
                     name = self.itemString(lhs, item)
                     if index < len(item) - 1 and not grammar.isTerminal(item[index+1]):
                         for epsilonTransition in self.itemMap[item[index+1]]:
-                            if "-> ." in epsilonTransition: # only puy .X in
+                            if "-> " + itemSeparator in epsilonTransition: # only puy .X in
                                 self.transitionTable[name]["epsilon"].append(epsilonTransition)
 
 
@@ -38,7 +39,7 @@ class DFA:
         for state in self.transitionTable:
             itemChunk = state.partition(" -> ")[2].split(" ")
             for transition in itemChunk:
-                if transition != "." and transition != "":
+                if transition != itemSeparator and transition != "":
                     self.transitions.add(transition)
 
 

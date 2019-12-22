@@ -2,11 +2,14 @@ from dfa import DFA
 from grammar import Grammar
 from lex import Lexer
 from AST import AST
+from errors import Error
+from separator import itemSeparator
 import copy
 import sys
 
 class SLRParser:
     def __init__(self, fileName, cFile):
+        self.e = Error(fileName)
         self.nodeStack = []
         self.fileName = fileName
         self.grammar = Grammar(open(fileName).read())
@@ -30,7 +33,7 @@ class SLRParser:
                 self.actions[state][on] = ("error")
             self.actions[state]["$"] = ("error")
         for state in self.dfa.transitionTable:
-            if "DummyStart -> " + self.grammar.startSymbol + " ." in state:
+            if "DummyStart -> " + self.grammar.startSymbol + " " + itemSeparator in state:
                 if state not in self.actions:
                     self.actions[state] = {"$" : ("accept")}
                 else:
@@ -38,17 +41,17 @@ class SLRParser:
 
             for transition in self.dfa.transitionTable[state]:
                 actionState = self.dfa.goto(state, transition)
-                if any([". " + transition in x for x in state]) and actionState is not None:
+                if any([itemSeparator + " " + transition in x for x in state]) and actionState is not None:
                     if state not in self.actions:
                         self.actions[state] = {transition : ("shift", actionState)}
                     else:
                         self.actions[state][transition] = ("shift", actionState)
-                if any([x[-1] == "." for x in state]):
-                    matches = [x for x in state if x[-1] == "."]
+                if any([x[-1] == itemSeparator for x in state]):
+                    matches = [x for x in state if x[-1] == itemSeparator]
                     matches = [x for x in matches if transition in self.grammar.getFollowSet(x.partition(" ")[0])]
                     for match in matches:
                         if match.partition(" ")[0] != "DummyStart":
-                            reduceNum = len([x for x in match.partition(" -> ")[2].split(" ") if x != "."])
+                            reduceNum = len([x for x in match.partition(" -> ")[2].split(" ") if x != itemSeparator])
                             if state not in self.actions:
                                 self.actions[state] = {transition : ("reduce", match.partition(" ")[0], transition, reduceNum)}
                             else:
@@ -56,6 +59,7 @@ class SLRParser:
 
     def parse(self):
         lexIndex = 0
+        print( self.lexed)
         self.lexed.append((0,'KEY','$'))
         while True:
             lexItem = self.getLexItem(self.lexed[lexIndex])
@@ -74,8 +78,12 @@ class SLRParser:
                     self.stack.pop()
                 children = list(reversed(children))
                 self.stack.append((action[1], self.dfa.goto(self.stack[-1][1], action[1]), self.lexed[lexIndex]))
+                astChildren = [x for x in children if isinstance(x, AST)]
+                if astChildren != []:
+                    self.nodeStack.append(AST(action[1], children, min([x.lineNum for x in astChildren])))
+                else:
+                    self.nodeStack.append(AST(action[1], children, self.lexed[(lexIndex)][0]))
 
-                self.nodeStack.append(AST(action[1], children, self.lexed[lexIndex][0]))
             elif action == ("error"):
                 # Debugging like a pro
                 print( self.lexed[lexIndex])

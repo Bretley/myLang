@@ -1,24 +1,38 @@
 import copy
-import sys
 
 
-""" returns only AST children of ast or of list """
 def asts(ast):
+    """Returns a list containing only ASTs from a given collection
+    AST class supports iteration, so the input can be a list or not
+
+    Args:
+        ast: AST or List
+
+    Returns:
+        List of ASTs
+
+    """
     return [x for x in ast if isinstance(x, AST)]
 
-def flattenLists(ast, parentIsList, parentName):
+
+def flattenLists(ast):
+    """Method to convert AST linked-style lists to a flat list
+    Args:
+        ast: AST to be converted/flattened
+
+    Returns:
+        the full AST with flattened lists
+    """
     if not isinstance(ast, AST):
         return [ast]
-    if ast.isList() and parentIsList and parentName == ast.name:
-        ret = []
-        for child in ast.children:
-            ret += flattenLists(child, True, ast.name)
-        return ret
+    children = []
+    for child in ast.children:
+        children += flattenLists(child)
+    if ast.isList() and ast.parent.isList() and ast.name == ast.parent.name:
+        return children
     else:
-        ret = []
-        for child in ast.children:
-            ret += flattenLists(child, ast.isList() , ast.name)
-        return [AST(ast.name, ret, ast.lineNum)]
+        return [AST(ast.name, children, ast.lineNum)]
+
 
 class AST:
     def __init__(self, name, children, lineNum):
@@ -31,20 +45,22 @@ class AST:
         self.cCode = None
         self.hoists = []
         self.lineNum = lineNum
+        self.parent = None
+        for child in asts(self.children):
+            child.setParent(self)
 
-    """ boolean of whether or not this node is a list.
-    This is mostly a helper for flattening lists"""
     def isList(self):
-        return ('list' in self.name or 'List' in self.name)
+        """Boolean of whether the name indicates a list"""
+        return 'list' in self.name or 'List' in self.name
 
-    """ boolean of which production was chosen """
-    def case(self, number): 
+    def case(self, number):
+        """Returns boolean of caseNum, used for if statements"""
         return self.caseNum == number
 
     def __iter__(self):
         self.counter = 0
         return self
-    
+
     def __next__(self):
         return self.next()
 
@@ -55,19 +71,20 @@ class AST:
             return ret
         else:
             raise StopIteration
-            
+
     def __getitem__(self, index):
         return self.children[index]
 
     def str(self, depth):
         pad = ' '*depth
         ret = pad + "[" + self.name + ": " + str(self.type)
+        ret += ' : ' + str(self.lineNum)
         for child in self.children:
             ret += "\n"
             if isinstance(child, AST):
                 ret += child.str(depth+1)
             else:
-                ret += pad + ' ' + " [" + str(child) +"]"
+                ret += pad + ' ' + " [" + str(child) + "]"
         ret += '\n' + pad + "]"
         return ret
 
@@ -83,7 +100,7 @@ class AST:
             # loop over all remaining productions of equal length
             for prod in viableProds:
                 found = True
-                for itemIndex, (item, child) in enumerate(zip(prod,self.children)):
+                for item, child in zip(prod, self.children):
                     if grammar.isTerminal(item):
                         found = found and not isinstance(child, AST)
                         if item == 'NUM':
@@ -93,17 +110,21 @@ class AST:
                         else:
                             found = found and (item == child)
                     else:
-                        found = found and isinstance(child, AST) and (item == child.name)
+                        found &= isinstance(child, AST)
+                        found &= item == child.name
                 if found:
                     self.caseNum = productions.index(prod)
                     break
 
         for child in self:
-                if isinstance(child, AST):
-                    child.genCases(grammar)
+            if isinstance(child, AST):
+                child.genCases(grammar)
 
     def __str__(self):
         return self.str(0)
 
     def __len__(self):
         return len(self.children)
+
+    def setParent(self, parent):
+        self.parent = parent

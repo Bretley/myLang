@@ -6,17 +6,17 @@ import sys
 import re
 
 identifiers = "[a-z]([a-zA-Z]|[0-9])*"
-types = "[A-Z][a-z]*"
+types = "[A-Z][a-zA-Z0-9]*"
 numbers = "[0-9]+"
-symbols = "->|=>|\{|\}|\[|\]|\(|\)|<=|>=|==|!=|=|<|>|;|\+|\-|\*|/|v|\^|,|:|\|"
+floats = "[0-9]+\.[0-9]*"
+string = "\"*\""
+symbols = "\.|->|=>|\{|\}|\[|\]|\(|\)|<=|>=|==|!=|=|<|>|;|\+|\-|\*|/|v|\^|,|:|\|"
 keywordsList = ["else","if","int","return","void","while","in","non","or","and", "not", "v",
         "type"]
 keywords = "|".join([x + "(?![a-zA-Z0-9])" for x in keywordsList])  # Use lookahead to make sure
 commentStart = "/\*"
 commentEnd = "\*/"
 
-# matchPrint: handles logic of when to print based on matches
-# Appends to the lex output if appropriate
 def matchPrint(lexType, matched, lineCount, lexedString):
     lexTuple = ()
     if matched != "" and ((matched != "/*" and matched != "*/") or lexType == "ERROR"):
@@ -37,7 +37,6 @@ def matchCheck(regex, string):
 
 # heavy-lifting method, handles most of the logic
 def lex(infile):
-    curMatchSize = 0
     curSize = 0                 # Used to check if there was a match
     lineCount = 1               # Keep track of line nr.
     inComment = False           # Am I in a currently in an open comment?
@@ -51,8 +50,8 @@ def lex(infile):
                 if lexTuple != ():
                     lexedList.append(lexTuple)
             return not inComment, lexed, lexedList
-                                                # Munch the whitespace if it's at the start
-        while infile[0] in [" ","\t","\n"]:
+        # Munch the whitespace if it's at the start
+        while infile[0] in [" ", "\t", "\n"]:
             if infile[0] == "\n":
                 lineCount += 1
             infile = infile[1:]

@@ -4,6 +4,7 @@ from AST import asts
 from varClasses import *
 from errors import *
 from typedef import *
+from symTable import *
 
 
 e = Error(sys.argv[1])
@@ -13,47 +14,15 @@ def isBool(*args):
     else:
         return all([x.type == 'Bool' for x in args])
 
-def allType(checkList, ast):
-    return all(asts(ast))
-
-
 """ Checks type and marks ast """
 def typeOf(ast):
     if ast.type:
         return ast.type
-        # Hasty return
-    
-    if ast.name == 'compound-stmt':
-        ast.type = typeOf(ast[0]) # type of final-stmt
-    elif ast.name == 'final-stmt':
-        ast.type = typeOf(ast[0]) # simple-expression
-    elif ast.name == 'simple-expression':
-        if len(ast.children) == 1:
-            ast.type = typeof(ast[0])
+    if ast.name in ['compound-stmt', 'final-stmt']:
+        ast.type = typeOf(ast[0]) # type of final/compound
+    elif ast.name == 'simple-expression' and len(ast.children) == 1:
+        ast.type = typeof(ast[0])
     return ast.type
-
-class SymbolTable:
-    def __init__(self):
-        self.stack = []
-        self.stackNum = -1
-    def enterScope(self):
-        self.stack.append({})
-        self.stackNum += 1
-    def exitScope(self):
-        self.stack.pop()
-        self.stackNum -= 1
-    def findSymbol(self,symbol):
-        for nested in reversed(self.stack):
-            if symbol in nested:
-                return nested[symbol]
-        return None
-    def addSymbol(self,symbol):
-        self.stack[self.stackNum][symbol.name] = symbol
-    def checkScope(self,symbolName):
-        if symbolName in self.stack[-1]:
-            return True
-        else:
-            return False
 
 def listLen(ast, name):
     ret = 0
@@ -65,7 +34,7 @@ def listLen(ast, name):
             break
     return ret
 
-def errorCheck(ast, st, fileLines):
+def errorCheck(ast, st, namedST, fileLines):
     valid = True
     if not isinstance(ast, AST):
         return True
@@ -74,23 +43,24 @@ def errorCheck(ast, st, fileLines):
         st.enterScope()
     elif ast.name == 'productType':
         st.enterScope()
+        namedST.addScope(ast[1], {})
+        namedST.enterScope(ast[1])
 
     elif ast.name == 'fun-declaration':
         if len(ast[0].children) != 1 :
             err( "only one name per function definition allowed")
             return False
         st.enterScope()
-
+        namedST.addScope(ast[0][0],{})
+        namedST.enterScope(ast[0][0])
 
     """ Top down above here """
     for child in ast:
-        valid = valid and errorCheck(child, st, fileLines)
+        valid = valid and errorCheck(child, st, namedST, fileLines)
         if not valid:
             return False
     """ Bottom up below here """
 
-    """ Function declaration / body """
-    
     for x in asts(ast):
         ast.hoists += x.hoists
     
@@ -98,7 +68,8 @@ def errorCheck(ast, st, fileLines):
         pass
 
     elif ast.name == 'productType':
-        st.exitScope()
+        namedST.setScope(st.exitScope())
+        namedST.exitScope()
         st.addSymbol(Product(ast, st))
     elif ast.name == 'sumType':
         st.addSymbol(Sum(ast,st))
@@ -109,27 +80,77 @@ def errorCheck(ast, st, fileLines):
                     'type ' + ast[0] + ' not defined' ,
                     "Semantic",
                     ast.lineNum)
-        elif ast[2].type not in symbol.signatures:
+        elif ast[2].type != symbol.signatures:
+            print( symbol.signatures)
+            print( ast[2].type)
             e.err("Constructor error\n" + 
                     "No valid constructor of type: " + str(ast[2].type) + '\n' +
                     "found for type " + symbol.name + "\n",
                     "Semantic",
                     ast.lineNum)
+        else:
+            ast.type = ast[0]
 
-
-    elif ast.name == 'param':
+    elif ast.name == 'namedParam':
         for childname in ast[1]:
             #print( name + ast[0].brackets)
-            st.addSymbol(Var(childname, ast[0].baseType,
-                ast[0].dimensions))
+            if not st.checkScope(childname): 
+                st.addSymbol(Var(childname, ast[0].baseType,
+                    ast[0].dimensions, 'param'))
+            else:
+                # TODO: Error msg for parameters with same name
+                print( 'renamed param')
+    elif ast.name == 'destructuredParam':
+        if ast[0].dimensions > 0:
+            #TODO: error message for
+            # type specifier with dimension higher than 0
+            # for  a destructured parameter
+            print( 'higher dimension than 0 for destructure')
+            pass
+        elif isDefault(ast[0][0]):
+            #TODO: error for default type in destructure
+            print( 'defualt in param')
+            pass
+        typ = st.findSymbol(ast[0][0])
+        if typ is None:
+            #TODO: Error for type not being defined
+            pass
+        elif not isinstance(typ, Product):
+            #TODO: error for must be product to be destructured
+            print( 'not a product')
+            pass
+        else:
+            for name in ast[2]:
+                var = typ.get(name)
+                if var is None:
+                    #TODO: Error for illegal accessor name in destructure
+                    pass
+                elif st.checkScope(var.name):
+                    #TODO: error for redefining param
+                    # Does this even make sense? if you can't rename the param
+                    # then no
+                    pass
+                else:
+                    st.addSymbol(
+                        Var(
+                            var.name,
+                            var.type,
+                            var.dimensions,
+                            'destructuredParam'
+                        )
+                    )
 
     elif ast.name == 'fun-declaration':
-        # print( ast.hoists[0].name )
-        # print( ast.hoists[0].type )
+        namedST.setScope(st.exitScope())
+        namedST.exitScope()
         ast.returnType = ast[2].type
 
     elif ast.name == 'anonymous-function':
         ast.type = ast[2].type
+        if ast.parent.name != 'fun-declaration':
+            i = 0
+            if not st.checkScope('anonymous_main_' + str(i)):
+                st.addSymbol(Var('anonymous_main_' + str(i), ast.type, 0, 'Function'))
 
     elif ast.name == 'compound-stmt':
         ast.type = ast[2].type
@@ -141,7 +162,6 @@ def errorCheck(ast, st, fileLines):
         ast.type = ast[0].type
     
     elif ast.name == 'expressionList':
-        
         if len(ast) == 1:
             ast.type = ast[0].type
         else:
@@ -150,13 +170,14 @@ def errorCheck(ast, st, fileLines):
             for varName in asts(ast)[:-1]:
                 var = st.findSymbol(varName[0])
                 if var is None: #Doesn't exist yet
-                    st.addSymbol(Var(varName[0], checkType, 0)) # TODO: deal with multi dimensions
+                    st.addSymbol(Var(varName[0], checkType, 0, 'hoisted')) # TODO: deal with multi dimensions
                     ast.hoists.append(st.findSymbol(varName[0]))
                 else: # already defined
                     if var.type != checkType:
                         print( var.name)
                         print( var.type)
-                        err("Attempting to assign expression of type: " + checkType + " -> " +
+                        print( st.stack)
+                        print("Attempting to assign expression of type: " + checkType + " -> " +
                                 var.type)
                         print( ast.lineNum)
                         print( fileLines[ast[0].lineNum-1])
@@ -195,10 +216,6 @@ def errorCheck(ast, st, fileLines):
                 ast.type = ast[1].type
         else:
             ast.type = ast[1].type
-        # print( '============')
-        # print( ast.type)
-        # print( ast)
-
 
     elif ast.name == 'simple-expression':
         if len(ast) == 1:
@@ -213,7 +230,7 @@ def errorCheck(ast, st, fileLines):
             if ast[0].type == ast[2].type:
                 ast.type =  ast[0].type
             else:
-                print('ERROR')
+                print('ERROR: in additive-expression')
 
     elif ast.name == 'term':
         if len(ast) == 1:
@@ -235,7 +252,6 @@ def errorCheck(ast, st, fileLines):
                     ast.type = var.type + '[]'*(var.dimensions - len(ast[0][1]))
             elif not isinstance(ast[0], AST):
                 ast.type = 'Int'
-                    
             else:
                 ast.type = 'Int'
         #TODO: Else
@@ -263,8 +279,7 @@ def errorCheck(ast, st, fileLines):
                 return False
             else:
                 st.addSymbol(Var(childname, ast[0].baseType,
-                    ast[0].dimensions))
-
+                    ast[0].dimensions, 'declared'))
     elif ast.name == 'bracket-group':
         if len(ast.children) == 2:
             ast.length = ''
@@ -275,15 +290,10 @@ def errorCheck(ast, st, fileLines):
         ast.baseType = ast[0].lower()
         ast.dimensions = len(ast[1].children)
         ast.brackets = ''.join([singlet.singlet for singlet in ast[1]])
-
     elif ast.name == 'args':
         ast.type = ast[0].type
     elif ast.name == 'arg-list':
         ast.type = tuple([x.type for x in asts(ast)])
-
-
-    elif ast.name == 'fun-declaration':
-        st.exitScope()
     if ast.name == 'program':
         st.exitScope()
     return valid

@@ -18,11 +18,14 @@ bracket-list --> bracket-list bracket-group || empty
 bracket-group --> [ ] || [ NUM ]
 fun-declaration --> ID-space-list = anonymous-function
 anonymous-function --> params => function-body || params => final-stmt
+anonymous-call --> ( params ) => function-body
 function-body --> { statement-list final-stmt }
 map-comprehension --> [ ID in ID => final-stmt ] || [ ID in ID => function-body ]
 params --> param-list || non
 param-list --> param-list , param || param
-param --> type-specifier ID-space-list
+param --> namedParam || destructuredParam
+destructuredParam --> type-specifier { ID-space-list }
+namedParam --> type-specifier ID-space-list
 compound-stmt --> { statement-list final-stmt }
 local-declarations-list --> local-declarations-list var-declaration || empty
 statement-list --> statement-list statement || statement || empty
@@ -52,4 +55,4 @@ mulop --> * || /
 factor --> ( expressionList ) || var || call || NUM || - NUM
 call --> var ( args )
 args --> arg-list || empty
-arg-list --> arg-list , expressionList || arg-list , anonymous-function || expressionList
+arg-list --> arg-list , expressionList || arg-list , anonymous-function || expressionList || anonymous-function

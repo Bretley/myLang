@@ -5,8 +5,8 @@ ack = Int m n => {
     [ non => 0;
 }
 comparator = Int a b =>
-    [(a > b) => 1;
-    [(a < b) => -1;
+    [ (a > b) => 1;
+    [ (a < b) => -1;
     [ non => 0;
 
 fact = Int a =>
@@ -22,5 +22,8 @@ fact2 = Int a => {
     }
     sum
 }
+
+f = Int[] a => map(Int g, Int k => g*k, a)
+
 */
 

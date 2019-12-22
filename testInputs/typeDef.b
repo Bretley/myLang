@@ -1,14 +1,14 @@
-type Cartesian = { 
+type Cartesian = {
     Int x y;
 }
 
-type Polar = {
-    Float r theta;
+type Polar  = {
+    Double r theta;
 }
 
-type Point = Cartesian | Polar;
+type Point = Polar | Cartesian;
 
 main = non => {
-    x = Point ( 5 , 4);
-    0 
+    p = Point (3,5);
+    3
 }
