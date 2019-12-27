@@ -39,6 +39,7 @@ def binop(ast, nst, ctx = None):
         op = ast[1]
     return (l, r, op)
 
+
 def conjunctive_bool(ast, nst, ctx):
     if len(ast) == 1:
         return codegen(ast[0], nst, ctx)
@@ -46,12 +47,12 @@ def conjunctive_bool(ast, nst, ctx):
         l, r, op = binop(ast, nst, ctx)
         lhs = ctx['builder'].and_(l, r)
         if op == 'v':
-            f = ctx['builder'].or_
+            operation = ctx['builder'].or_
         elif op == '^':
-            f = ctx['builder'].and_
+            operation = ctx['builder'].and_
         for rhs in asts(ast)[2:]:
             rhs = codegen(rhs, nst, ctx)
-            lhs = f(lhs, rhs)
+            lhs = operation(lhs, rhs)
         return lhs
 
 
@@ -75,21 +76,27 @@ def codegen(ast, nst, ctx=None):
         codegen(ast[0], nst, ctx)
     elif name == 'fun-declaration':
         nst.enterScope(ast[0][0])
-        r_type = conversions[ast[-1].type]
         call_sig = tuple(conversions[x] for x in ast[2][0].type)
+        arg_names = enumerate(ast[2][0].names)
         f_type = ir.FunctionType(conversions[ast.returnType], call_sig)
         f = ir.Function(ctx['mod'], f_type, name=ast[0][0])
-        block = f.append_basic_block(name="entry")
-
-        builder = ir.IRBuilder(block)
-        for i, arg_name in enumerate(ast[2][0].names):
+        for i, arg_name in arg_names:
             f.args[i].name = arg_name
-        args = f.args
+        block = f.append_basic_block(name="entry")
+        builder = ir.IRBuilder(block)
+        for key in nst.currentScope:
+            val = nst.currentScope[key]
+            if val.info == 'hoisted':
+                builder.alloca(conversions[val.type], name=val.name)
+
         ctx = {'builder': builder, 'fun': f}
         codegen(ast[2], nst, ctx)
+        nst.exitScope()
 
     elif name == 'anonymous-function':
         codegen(ast[2], nst, ctx)
+    elif name == 'function-body':
+        res = codegen(ast[0], nst, ctx)
     elif name == 'final-stmt':
         if ast[0].name == 'other-selection-stmt':
             codegen(ast[0], nst, ctx)
@@ -110,7 +117,6 @@ def codegen(ast, nst, ctx=None):
         return conjunctive_bool(ast, nst, ctx)
 
     elif name == 'boolFactor':
-        print('boolfact')
         if ast.case(0):
             return codegen(ast[0], nst, ctx)
         elif ast.case(1):
@@ -202,4 +208,3 @@ build.add(
     'addtmp')
     
 """
-print(module)
