@@ -17,6 +17,7 @@ keywords = "|".join([x + "(?![a-zA-Z0-9])" for x in keywordsList])  # Use lookah
 commentStart = "/\*"
 commentEnd = "\*/"
 
+
 def matchPrint(lexType, matched, lineCount, lexedString):
     lexTuple = ()
     if matched != "" and ((matched != "/*" and matched != "*/") or lexType == "ERROR"):
@@ -24,6 +25,7 @@ def matchPrint(lexType, matched, lineCount, lexedString):
         lexTuple = (lineCount, lexType, matched)
         lexedString += tmp
     return lexedString,  lexTuple
+
 
 # MatchCheck will handle regex logic, and most importantly, shrink infile by
 # the length of the matched lexeme
@@ -63,7 +65,7 @@ def lex(infile):
         if inComment:
             infile, matched = matchCheck(commentEnd, infile)
             if inComment and matched != "":
-                inComment = False;                  # Valid comment closed
+                inComment = False                  # Valid comment closed
                 continue
 
         if not inComment:                       # Not in comment => Check for lex tokens

@@ -9,6 +9,26 @@ from defaults import isDefault
 
 e = Error(sys.argv[1])
 
+OP_SIGNATURES = {
+    'term': {
+        ('Int', 'mulop', 'Int'): 'Int',
+        ('Int',): 'Int'
+    },
+    'additive-expression': {
+        ('Int', 'addop', 'Int'): 'Int',
+        ('Int',): 'Int'
+    },
+    'simple-expression': {
+        ('Int', 'relop', 'Int'): 'Bool',
+        ('Int',): 'Int',
+        ('Bool',): 'Bool'
+    },
+    'boolFactor': {
+        ('Int',): 'Int',
+        ('Bool',): 'Bool',
+    }
+}
+
 
 def is_bool(*args):
     """Returns true if all items in args have type Bool
@@ -19,10 +39,8 @@ def is_bool(*args):
         Returns:
             True if all items in args (or args[0]) have type 'Bool'
     """
-    if isinstance(args[0], list):
-        return all([x.type == 'Bool' for x in args[0]])
-    else:
-        return all([x.type == 'Bool' for x in args])
+    r = args[0] if isinstance(args[0], list) else args
+    return all([x.type == 'Bool' for x in r])
 
 def typeOf(ast):
     """Recursively marks ast and returns type
@@ -55,21 +73,23 @@ def errorCheck(ast, st, namedST, fileLines):
     if not isinstance(ast, AST):
         return True
 
+    # Make name and type synonymous for leaves
+    if ast.name in ['addop', 'relop', 'mulop']:
+        ast.type = ast.name
+
     if ast.name == 'program':
         st.enterScope()
     elif ast.name == 'productType':
         e.err_if(isDefault(ast[1]),
-                 'Type definition error\n' +
-                 'type ' + ast[1] + ' already defined',
-                 'Semantic',
-                 ast.lineNum-1)
+                 'Type definition error\ntype ' + ast[1] + ' already defined',
+                 'Semantic', ast.lineNum-1)
         st.enterScope()
         namedST.addScope(ast[1], {})
         namedST.enterScope(ast[1])
 
     elif ast.name == 'fun-declaration':
-        if len(ast[0].children) != 1 :
-            #TODO: Remove this from grammar?
+        if len(ast[0].children) != 1:
+            # TODO: Remove this from grammar?
             err( "only one name per function definition allowed")
             return False
         st.enterScope()
@@ -78,16 +98,33 @@ def errorCheck(ast, st, namedST, fileLines):
 
     """ Top down above here """
     for child in ast:
-        valid = valid and errorCheck(child, st, namedST, fileLines)
+        valid &= errorCheck(child, st, namedST, fileLines)
         if not valid:
             return False
     """ Bottom up below here """
 
     for x in asts(ast):
         ast.hoists += x.hoists
-    
+
+    if ast.name == 'params':
+        ast.type = ast[0].type
+        ast.names = ast[0].names if isinstance(ast[0], AST) else None
+        for name in ast.names:
+            st.findSymbol(name).info = ('param', 1)
+            print(st.findSymbol(name))
+        print(ast.names)
+
     if ast.name == 'param-list':
-        pass
+        ast.type = []
+        ast.names = []
+        for child in asts(ast):
+            ast.type += child.type
+            ast.names += child.names
+        print(st.stack[-1])
+
+    if ast.name == 'param':
+        ast.type = ast[0].type
+        ast.names = ast[0].names
 
     elif ast.name == 'productType':
         namedST.setScope(st.exitScope())
@@ -103,23 +140,24 @@ def errorCheck(ast, st, namedST, fileLines):
                  ast.lineNum)
 
         e.err_if(ast[2].type != symbol.signatures,
-                 'Constructor error\n' +
-                 'No valid constructor of type: ' + str(ast[2].type) + '\n' +
-                 'found for type ' + symbol.name + '\n',
-                 'Semantic',
-                 ast.lineNum)
-
+                 'Constructor error\nNo valid constructor of type: ' +
+                 str(ast[2].type) + '\nfound for type ' + symbol.name + '\n',
+                 'Semantic', ast.lineNum)
         ast.type = ast[0]
 
     elif ast.name == 'namedParam':
-        for name in ast[1]:
+        ast.type = []
+        ast.names = ast[1]
+        for i, name in enumerate(ast[1]):
             e.err_if(st.checkScope(name),
-                     'Parameter Error:\n' + 'variable ' + name + ' already defined'
+                     'Parameter Error:\n' + 'variable ' + name + ' already defined',
                      'Semantic', ast.lineNum)
             v = Var(name, ast[0].baseType, ast[0].dimensions, 'param')
             st.addSymbol(v)
+            ast.type += [ast[0].baseType]
 
     elif ast.name == 'destructuredParam':
+        ast.names = []
         e.err_if(ast[0].dimensions > 0,
                  'Type specifier has dimension higher than 0',
                  'Semantic', ast.lineNum)
@@ -129,7 +167,6 @@ def errorCheck(ast, st, namedST, fileLines):
                  'Semantic', ast.lineNum)
 
         typ = st.findSymbol(ast[0][0])
-
         e.err_if(typ is None,
                  'Type not defined before use in destructure',
                  'Semantic', ast.lineNum)
@@ -147,10 +184,11 @@ def errorCheck(ast, st, namedST, fileLines):
 
             e.err_if(st.checkScope(var.name),
                      'Param ' + var.name + ' already defined',
-                     'Semantic', ast.linenum)
+                     'Semantic', ast.lineNum)
 
             v = Var(var.name, var.type, var.dimensions, 'destructuredParam')
             st.addSymbol(v)
+        ast.type = [ast[0][0]]
 
     elif ast.name == 'fun-declaration':
         namedST.setScope(st.exitScope())
@@ -174,80 +212,63 @@ def errorCheck(ast, st, namedST, fileLines):
         ast.type = ast[0].type
     
     elif ast.name == 'expressionList':
-        if len(ast) == 1:
-            ast.type = ast[0].type
-        else:
-            #TODO: give this a look over
-            checkType = ast[-1].type
-            for varName in asts(ast)[:-1]:
-                var = st.findSymbol(varName[0])
-                if var is None: #Doesn't exist yet
-                    st.addSymbol(Var(varName[0], checkType, 0, 'hoisted'))
-                    # TODO: deal with multi dimensions
-                    ast.hoists.append(st.findSymbol(varName[0]))
-
-                e.err_if(var.type != checkType,
+        ast.type = ast[-1].type  # Always the type of farthest rhs
+        # TODO: give this a look over
+        for varName in asts(ast)[:-1]:
+            var = st.findSymbol(varName[0])
+            if var is not None:
+                e.err_if(var.type != ast.type,
                          'Attempting to assign expression of type: ' +
-                         checkType + ' -> ' + var.type,
+                         str(ast.type) + ' -> ' + str(var.type),
                          'Semantic', ast.lineNum)
 
-            ast.type = ast[-1].type
-        
+            st.addSymbol(Var(varName[0], ast.type, 0, 'hoisted'))
+            # TODO: deal with multi dimensions
+            ast.hoists.append(st.findSymbol(varName[0]))
+
     elif ast.name == 'boolExprList':
         if len(ast) == 1:
             ast.type = ast[0].type
+        elif is_bool(asts(ast)):
+            ast.type = 'Bool'
         else:
-            if is_bool(asts(ast)):
-                ast.type = 'Bool'
-            else:
-                print( 'ERROR: or clauses without bool type' )
+            print('ERROR: or clauses without bool type')
 
     elif ast.name == 'boolTermList':
         if len(ast) == 1:
             ast.type = ast[0].type
+        elif is_bool(asts(ast)):
+            ast.type = 'Bool'
         else:
-            if is_bool(asts(ast)):
-                ast.type = 'Bool'
-            else:
-                print( 'ERROR TBD')
+            print('ERROR TBD')
 
     elif ast.name == 'boolFactor':
-        if ast.case(0):
-            if is_bool(ast[0]):
-                ast.type = 'Bool'
-            else: 
-                ast.type = ast[0].type 
-        elif ast.case(1):
-            if is_bool(ast[1]):
-                ast.type = 'Bool'
-            else:
-                ast.type = ast[1].type
-        else:
-            ast.type = ast[1].type
+        signature = tuple(x.type for x in asts(ast))
+        e.err_if(signature not in OP_SIGNATURES['boolFactor'],
+                 'Error in simple-expression, invalid signature',
+                 'Semantic', ast.lineNum)
+        ast.type = OP_SIGNATURES['boolFactor'][signature]
 
     elif ast.name == 'simple-expression':
-        if len(ast) == 1:
-            ast.type = ast[0].type
-        else:
-            ast.type = 'Bool'
+        signature = tuple(x.type for x in asts(ast))
+        e.err_if(signature not in OP_SIGNATURES['simple-expression'],
+                 'Error in simple-expression, invalid signature',
+                 'Semantic', ast.lineNum)
+        ast.type = OP_SIGNATURES['simple-expression'][signature]
 
     elif ast.name == 'additive-expression':
-        if len(ast) == 1:
-            ast.type = ast[0].type
-        else: 
-            if ast[0].type == ast[2].type:
-                ast.type = ast[0].type
-            else:
-                print('ERROR: in additive-expression')
+        signature = tuple(x.type for x in asts(ast))
+        e.err_if(signature not in OP_SIGNATURES['additive-expression'],
+                 'Error in additive-expression, invalid signature',
+                 'Semantic', ast.lineNum)
+        ast.type = OP_SIGNATURES['additive-expression'][signature]
 
     elif ast.name == 'term':
-        if len(ast) == 1:
-            ast.type = ast[0].type
-        else:
-            if ast[0].type == ast[2].type:
-                ast.type =  ast[0].type
-            else:
-                print('ERROR')
+        signature = tuple(x.type for x in asts(ast))
+        e.err_if(signature not in OP_SIGNATURES['term'],
+                 'Error in term, invalid signature',
+                 'Semantic', ast.lineNum)
+        ast.type = OP_SIGNATURES['term'][signature]
 
     elif ast.name == 'factor':
         # TODO: fix fix fix
@@ -255,20 +276,21 @@ def errorCheck(ast, st, namedST, fileLines):
             ast.type = ast[1].type
         elif ast.case(1):
             if isinstance(ast[0], AST) and ast[0].name == 'var':
-                if st.checkScope(ast[0][0]):
-                    var = st.findSymbol(ast[0][0])
-                    ast.type = var.type + '[]'*(var.dimensions - len(ast[0][1]))
+                e.err_if(not st.checkScope(ast[0][0]),
+                          'Error: ' + str(ast[0][0]) + ' undefined in local scope',
+                         'Semantic', ast.lineNum)
+                var = st.findSymbol(ast[0][0])
+                ast.type = var.type + '[]'*(var.dimensions - len(ast[0][1]))
             elif not isinstance(ast[0], AST):
                 ast.type = 'Int'
             else:
                 ast.type = 'Int'
-        #TODO: Else
+        elif ast.case(2):
+            # TODO: Check type signature of call
+            ast.type = 'Int'
         else:
             ast.type = 'Int'
-            # if ast[0].type == ast[2].type:
-                # ast.type =  ast[0].type
-            # else: print('ERROR')
-        #print( '====' + ast.type + '====')
+
     elif ast.name == 'other-selection-stmt':
         ast.type = ast[1].type
 
@@ -280,6 +302,7 @@ def errorCheck(ast, st, namedST, fileLines):
         for child in ast[2]:
             if child.isdigit():
                 ast.type.append('Int')
+
     elif ast.name == 'var-declaration':
         for child in ast[1]:
             e.err_if(st.checkScope(child),
@@ -288,6 +311,7 @@ def errorCheck(ast, st, namedST, fileLines):
 
             v = Var(child, ast[0].baseType, ast[0].dimensions, 'declared')
             st.addSymbol(v)
+
     elif ast.name == 'bracket-group':
         if len(ast.children) == 2:
             ast.length = ''
@@ -295,7 +319,7 @@ def errorCheck(ast, st, namedST, fileLines):
             ast.length = ast[1]
         ast.singlet = ''.join(ast.children)
     elif ast.name == 'type-specifier':
-        ast.baseType = ast[0].lower()
+        ast.baseType = ast[0]
         ast.dimensions = len(ast[1].children)
         ast.brackets = ''.join([singlet.singlet for singlet in ast[1]])
     elif ast.name == 'args':

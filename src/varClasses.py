@@ -27,7 +27,7 @@ class Var:
         if self.dimensions > 0:
             ret += '[]'*self.dimensions + ' '
         ret += self.name
-        ret += ' (' + self.info+ ')'
+        ret += ' (' + str(self.info) + ')'
         return ret
 
 class Fun:

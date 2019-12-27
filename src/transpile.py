@@ -7,7 +7,7 @@ from varClasses import *
 from semantic import *
 from typedef import Product, Sum
 from defaults import isDefault
-from symTable import *
+from symTable import SymbolTable, NamedSymbolTable
 
 ifpref = 'if (type == '
 promotions = {
@@ -161,7 +161,7 @@ def genC(ast, st, nst, td):
             ast.cstr += ast[5].cstr
             ast.cstr += '\n' + (tab*(td-1)) + '}\n'
     elif name == 'final-stmt':
-        #TODO figure out the casese
+        #TODO figure out the cases
         # If this is the last one in a function and only contains a simple
         # expression, we ought to return it
         if ast[0].name == 'other-selection-stmt':
@@ -170,7 +170,6 @@ def genC(ast, st, nst, td):
             ast.cstr = 'return ' + ast[0].cstr + ';\n'
         else: 
             ast.cstr = 'selectionResolution ' + ast[0].cstr + '\n'
-        #ret += tab*td + 'return ' + ast[0].cstr + ';\n'
 
     elif ast.name in ['addop', 'relop', 'mulop']:
         ast.cstr = ast[0]
@@ -328,7 +327,6 @@ def genC(ast, st, nst, td):
             if ast.selectionResolution != 'return':
                 ast.cstr += tab*(td+1)
                 ast.cstr += ast[3].cstr + ';\n'
-            else:
                 if ast[3].name != 'other-selection-stmt':
                     ast.cstr += tab*(td+1)
                     ast.cstr += ast[3].cstr
@@ -387,7 +385,7 @@ flattenedListAST = flattenLists(ast)[0]
 flattenedListAST.genCases(parser.grammar)
 st = SymbolTable()
 nst = NamedSymbolTable()
-valid =  errorCheck(flattenedListAST,
+valid = errorCheck(flattenedListAST,
         st,
         nst,
         parser.lexer.infileLines)

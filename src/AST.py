@@ -110,8 +110,10 @@ class AST:
                         else:
                             found = found and (item == child)
                     else:
-                        found &= isinstance(child, AST)
-                        found &= item == child.name
+                        if isinstance(child, AST):
+                            found &= item == child.name
+                        else:
+                            found = False
                 if found:
                     self.caseNum = productions.index(prod)
                     break

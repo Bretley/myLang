@@ -1,5 +1,5 @@
 program --> declaration-list
-declaration-list --> declaration-list declaration || declaration || empty
+declaration-list --> declaration-list declaration || declaration
 declaration --> var-declaration || fun-declaration || dataDeclaration
 dataDeclaration --> sumType || productType
 sumType --> type TYPE = typeBarList ;
