@@ -27,6 +27,12 @@ conversions = {
 includes = ['stdarg', 'stdlib', 'stdio']
 tab = ' '*4
 
+def binop(mod, ast, st, nst, ctx = None):
+    l = codegen(mod, ast[0], st, nst, ctx)
+    r = codegen(mod, ast[2], st, nst, ctx)
+    op = ast[1][0]
+    return (l, r, op)
+
 
 def codegen(mod, ast, st, nst, ctx = None):
     """
@@ -58,7 +64,7 @@ def codegen(mod, ast, st, nst, ctx = None):
         for i, arg_name in enumerate(ast[2][0].names):
             f.args[i].name = arg_name
         args = f.args
-        ctx = {'builder': builder}
+        ctx = {'builder': builder, 'fun': f}
         codegen(mod, ast[2], st, nst, ctx)
 
     elif name == 'anonymous-function':
@@ -68,41 +74,72 @@ def codegen(mod, ast, st, nst, ctx = None):
             codegen(mod, ast[0], st, nst, ctx)
         else:
             ctx['builder'].ret(codegen(mod, ast[0], st, nst, ctx))
+    elif name == 'expressionList':
+        if ast[-1] == 'other-selection-stmt':
+            pass
+        elif ast[-1] == 'constructor':
+            pass
+        else:
+            result = codegen(mod, ast[-1], st, nst, ctx)
+        for x in asts(ast[:-1]):
+            pass  # DO some kind of lwd/swd
+        return result
+
+    elif name == 'boolExprList':
+        if len(ast) == 1:
+            return codegen(mod, ast[0], st, nst, ctx)
+        else:
+            # TODO: or clause
+            pass
+
+    elif name == 'boolTermList':
+        print('boolterm')
+        if len(ast) == 1:
+            return codegen(mod, ast[0], st, nst, ctx)
+        # TODO: multi-and clause
+
+    elif name == 'boolFactor':
+        print('boolfact')
+        if ast.case(0):
+            return codegen(mod, ast[0], st, nst, ctx)
+        elif ast.case(2):
+            # TODO: Other cases
+            pass
+        elif ast.case(3):
+            return codegen(mod, ast[1], st, nst, ctx)
+
     elif name == 'simple-expression':
         if ast.case(0):
-            l = codegen(mod, ast[0], st, nst, ctx)
-            r = codegen(mod, ast[2], st, nst, ctx)
-            op = ast[1][0]
-            return ctx['builder'].icmp_signed(op, l, r, )
+            l, r, op = binop(mod, ast, st, nst, ctx)
+            return ctx['builder'].icmp_signed(op, l, r)
         else:
             return codegen(mod, ast[0], st, nst, ctx)
     elif name == 'additive-expression':
         if ast.case(0):
-            l = codegen(mod, ast[0], st, nst, ctx)
-            r = codegen(mod, ast[2], st, nst, ctx)
-            op = ast[1][0]
+            l, r, op = binop(mod, ast, st, nst, ctx)
             if op == '+':
-                return ctx['builder'].add(l,r)
+                return ctx['builder'].add(l, r)
             elif op == '-':
-                return ctx['builder'].sub(l,r)
+                return ctx['builder'].sub(l, r)
         else:
             return codegen(mod, ast[0], st, nst, ctx)
     elif name == 'term':
         if ast.case(0):
-            l = codegen(mod, ast[0], st, nst, ctx)
-            r = codegen(mod, ast[2], st, nst, ctx)
-            op = ast[1][0]
+            l, r, op = binop(mod, ast, st, nst, ctx)
             if op == '*':
-                return ctx['builder'].mul(l,r)
+                return ctx['builder'].mul(l, r)
             elif op == '/':
-                return ctx['builder'].mul(l,r)
+                return ctx['builder'].sdiv(l, r)
         else:
             return codegen(mod, ast[0], st, nst, ctx)
     elif name == 'factor':
         if ast.case(0):
             return codegen(mod, ast[1], st, nst, ctx)
         elif ast.case(1):  # Var access:
-            return ast[0][0]
+            # Param case
+            p = [x for x in ctx['fun'].args if x.name == ast[0][0]][0]
+            return p
+
         elif ast.case(2):
             return None
         elif ast.case(3):
