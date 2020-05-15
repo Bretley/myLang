@@ -9,9 +9,9 @@ identifiers = "[a-z]([a-zA-Z]|[0-9])*"
 types = "[A-Z][a-zA-Z0-9]*"
 numbers = "[0-9]+"
 floats = "[0-9]+\.[0-9]*"
-string = "\"*\""
+string = "\".*\""
 symbols = "\.|->|=>|\{|\}|\[|\]|\(|\)|<=|>=|==|!=|=|<|>|;|\+|\-|\*|/|v|\^|,|:|\|"
-keywordsList = ["else","if","int","return","void","while","in","non","or","and", "not", "v",
+keywordsList = ["let","else","if","int","return","void","while","in","non","or","and", "not", "v",
         "type"]
 keywords = "|".join([x + "(?![a-zA-Z0-9])" for x in keywordsList])  # Use lookahead to make sure
 commentStart = "/\*"
@@ -37,7 +37,51 @@ def matchCheck(regex, string):
     else:
         return string, ""
 
+def get_matches(s):
+    lex_items = {
+        'identifiers': identifiers,
+        'types': types,
+        'numbers': numbers,
+        'floats': floats,
+        'string': string,
+        'symbols': symbols,
+        'keywords': keywords,
+        'comment': comment
+    }
+
+    matches = []
+    for lex_name in lex_items:
+        m = re.match(lex_items[lex_name], s)
+        if m:
+            matches.append(m.group())
+    return matches
+
 # heavy-lifting method, handles most of the logic
+def lex2(infile):
+    curSize = 0
+    lineCount = 1
+    inComment = False
+    lexed = ""
+    lexedList = []
+    target = '|'.join([lex_items[name] for name in lex_items])
+    reg = re.compile(target)
+    print(target)
+    while True:
+        if len(infile) == 0:
+            break
+        if infile[0] in ('\t', ' ', '\n'):
+            infile = infile[1:]
+            continue
+        print(get_matches(infile))
+        break
+
+
+
+
+    print('lex')
+    print(lexedList)
+    sys.exit(1)
+
 def lex(infile):
     curSize = 0                 # Used to check if there was a match
     lineCount = 1               # Keep track of line nr.
@@ -94,7 +138,7 @@ def lex(infile):
             lexed, lexTuple = matchPrint("SYM", matched, lineCount, lexed)
             if lexTuple != ():
                 lexedList.append(lexTuple)
-            if matched != "":
+            if matched != '':
                 continue
             infile, matched = matchCheck(types, infile)
             lexed, lexTuple = matchPrint("TYPE", matched, lineCount, lexed)
@@ -116,11 +160,7 @@ def lex(infile):
 class Lexer:
     def __init__(self, infile, outfile):
         infile = open(infile, "r+").read()
-        outfile = open(outfile, "w+")
         self.infileLines = infile.split('\n')
         self.infile = infile
-        self.outfile = outfile
         self.successful, self.lexed, self.lexedList = lex(infile)
-        if self.successful: 
-            self.outfile.write(self.lexed)
 

@@ -75,13 +75,13 @@ class DFA:
         if inputSymbol in self.transitionTable[self.state]:
             self.state = self.transitionTable[self.state][inputSymbol]
         else:
-            print("ERRO================ No DFA Transition?")
+            print("ERROr No DFA Transition?")
 
     def goto(self, state, inputSymbol):
         if inputSymbol in self.transitionTable[state]:
             return self.transitionTable[state][inputSymbol]
         else:
-            #print("ERRO================ No DFA Transition?")
+            #print("ERROr No DFA Transition?")
             return None
 
     def epsilonClosure(self, stateSet):

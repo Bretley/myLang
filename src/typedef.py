@@ -82,13 +82,13 @@ class Product():
         self.name = ast[1]
         self.members = []
         self.signatures = []
-        for varDecl in ast[4]: # memberList
-            for identifier in varDecl[1]:
-                #TODO: check
+        for var in ast[4]:  # memberList
+            for identifier in var[1]:
+                # TODO: check
                 self.members.append(
-                    Var(identifier, varDecl[0][0], len(varDecl[0][1]), 'Product')
+                    Var(identifier, var[0][0], len(var[0][1]), 'Product')
                 )
-                self.signatures.append(varDecl[0][0])
+                self.signatures.append(var[0][0])
         self.members = tuple(self.members)
         self.signatures = tuple(self.signatures)
 

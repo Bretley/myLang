@@ -111,7 +111,6 @@ class Grammar:
         return self.nullable[symbol]
 
     def genFirstAndFollowSets(self):
-        # TODO: Gen first and follow sets
         # First sets
         for lhs in self.grammarTable:
             first = self.genFirstSet(lhs,lhs)
@@ -210,7 +209,7 @@ class Grammar:
                     if x < len(production) and production[x] == "empty":
                         cur.append([itemSeparator])
                         break
-                    cur.append(production[0:x] +  [itemSeparator] + production[x:len(production)])
+                    cur.append(production[0:x] + [itemSeparator] + production[x:len(production)])
                 self.items[lhs].append(cur)
 
 

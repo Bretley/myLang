@@ -59,7 +59,6 @@ class SLRParser:
 
     def parse(self):
         lexIndex = 0
-        print( self.lexed)
         self.lexed.append((0,'KEY','$'))
         while True:
             lexItem = self.getLexItem(self.lexed[lexIndex])
@@ -68,18 +67,18 @@ class SLRParser:
                 self.stack.append((self.getLexItem((self.lexed[lexIndex])), action[1], self.lexed[lexIndex]))
                 self.nodeStack.append(lexItem)
                 lexIndex += 1
-            elif action[0] =="reduce":
+            elif action[0] == "reduce":
                 children = []
                 for pop in range(action[3]):
                     lexVal = self.nodeStack.pop()
-                    if lexVal == "ID" or lexVal == "NUM" or lexVal == "TYPE":
-                        lexVal = self.stack[-1][2][2]
+                    if lexVal in ('ID', 'NUM', 'TYPE'):
+                        lexVal = AST(lexVal, [self.stack[-1][2][2]], self.lexed[lexIndex][0])
                     children.append(lexVal)
                     self.stack.pop()
                 children = list(reversed(children))
                 self.stack.append((action[1], self.dfa.goto(self.stack[-1][1], action[1]), self.lexed[lexIndex]))
                 astChildren = [x for x in children if isinstance(x, AST)]
-                if astChildren != []:
+                if astChildren:
                     self.nodeStack.append(AST(action[1], children, min([x.lineNum for x in astChildren])))
                 else:
                     self.nodeStack.append(AST(action[1], children, self.lexed[(lexIndex)][0]))

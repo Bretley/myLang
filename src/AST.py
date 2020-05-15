@@ -36,6 +36,7 @@ def flattenLists(ast):
 
 class AST:
     def __init__(self, name, children, lineNum):
+        self.lhs = None
         self.name = name
         self.children = children
         self.type = None
@@ -46,6 +47,8 @@ class AST:
         self.hoists = []
         self.lineNum = lineNum
         self.parent = None
+        self.namedProd = None
+        self.names = ()
         for child in asts(self.children):
             child.setParent(self)
 
@@ -89,34 +92,14 @@ class AST:
         return ret
 
     def genCases(self, grammar):
-        productions = grammar.getProd(self.name)
-        viableProds = copy.deepcopy(productions)
-        # Prune by length first
-        viableProds = [x for x in viableProds if len(x) == len(self)]
-        if self.isList():
-            self.caseNum = 0
-        else:
-
-            # loop over all remaining productions of equal length
-            for prod in viableProds:
-                found = True
-                for item, child in zip(prod, self.children):
-                    if grammar.isTerminal(item):
-                        found = found and not isinstance(child, AST)
-                        if item == 'NUM':
-                            found = found and (child.isdigit())
-                        elif item == 'ID':
-                            found = found and not child[0].isdigit()
-                        else:
-                            found = found and (item == child)
-                    else:
-                        if isinstance(child, AST):
-                            found &= item == child.name
-                        else:
-                            found = False
-                if found:
-                    self.caseNum = productions.index(prod)
-                    break
+        self.caseNum = 0
+        productions = []
+        if self.name not in ('ID', 'CONSTANT', 'TYPE', 'NUM'):
+            productions = grammar.getProd(self.name)
+            self.namedProd = [x.name if isinstance(x, AST) else x for x in self.children]
+            if not self.namedProd:
+                self.namedProd = ['empty']
+            self.caseNum = productions.index(self.namedProd)
 
         for child in self:
             if isinstance(child, AST):
