@@ -1,4 +1,4 @@
-# My to programming language
+# My toy programming language
 
 Just for fun
 
